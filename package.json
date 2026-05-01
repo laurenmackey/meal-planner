@@ -1,0 +1,29 @@
+{
+  "name": "meal-planner",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "db:create": "createdb meal_planner",
+    "db:drop": "dropdb meal_planner",
+    "db:migrate": "node-pg-migrate up --migration-file-language sql -m migrations",
+    "db:rollback": "node-pg-migrate down --migration-file-language sql -m migrations",
+    "db:setup": "npm run db:create && npm run db:migrate",
+    "db:reset": "npm run db:drop && npm run db:setup",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "node-pg-migrate": "^8.0.4",
+    "pg": "^8.20.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "@types/pg": "^8.20.0",
+    "typescript": "^6.0.3"
+  }
+}
