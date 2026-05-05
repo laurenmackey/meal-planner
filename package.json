@@ -10,6 +10,7 @@
     "db:rollback": "node-pg-migrate down --migration-file-language sql -m migrations",
     "db:setup": "npm run db:create && npm run db:migrate",
     "db:reset": "npm run db:drop && npm run db:setup",
+    "dev": "ts-node src/server.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -18,12 +19,15 @@
   "type": "commonjs",
   "dependencies": {
     "dotenv": "^17.4.2",
+    "express": "^5.2.1",
     "node-pg-migrate": "^8.0.4",
     "pg": "^8.20.0"
   },
   "devDependencies": {
+    "@types/express": "^5.0.6",
     "@types/node": "^25.6.0",
     "@types/pg": "^8.20.0",
+    "ts-node": "^10.9.2",
     "typescript": "^6.0.3"
   }
 }

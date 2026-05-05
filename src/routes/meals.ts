@@ -1,0 +1,127 @@
+import { Router, Request, Response } from "express";
+import pool from "../db";
+import { Protein, MealSelection, ChooseWeeklyMealsResponse, RejectFoodItemsResponse } from "../types";
+import { toMeal, toFoodSelection } from "../mappers";
+
+const router = Router();
+const LOOKBACK_WEEKS = 3;
+
+// Ranking weights
+const RATING_WEIGHT = 0.3;
+const EASINESS_WEIGHT = 0.35;
+const HEALTH_WEIGHT = 0.2;
+const PROTEIN_VARIETY_BONUS = 2;
+const PREFERRED_PROTEIN_BONUS = 1;
+const PREFERRED_PROTEINS: Protein[] = ['chicken', 'turkey', 'fish'];
+
+// POST /api/v1/chooseWeeklyMeals
+// Body: { count?: number }
+router.post("/chooseWeeklyMeals", async (req: Request, res: Response) => {
+  const count = req.body.count ?? 3;
+
+  try {
+    // Find eligible meals: not chosen in the last [lookback] weeks (or never chosen)
+    const eligibleMealsResult = await pool.query(`
+      SELECT m.*
+      FROM meals m
+      WHERE m.id NOT IN (
+        SELECT fs.meal_id
+        FROM food_selections fs
+        WHERE fs.meal_id IS NOT NULL
+          AND fs.chosen_at > NOW() - INTERVAL '${LOOKBACK_WEEKS} weeks'
+      )
+    `);
+
+    const eligible = eligibleMealsResult.rows.map(toMeal);
+
+    if (eligible.length === 0) {
+      const response: ChooseWeeklyMealsResponse = { meals: [] };
+      res.json(response);
+      return;
+    }
+
+    // Get proteins already selected this week to encourage rotation
+    const thisWeekProteinsResult = await pool.query(`
+      SELECT DISTINCT m.main_protein
+      FROM food_selections fs
+      JOIN meals m ON m.id = fs.meal_id
+      WHERE fs.chosen_at > NOW() - INTERVAL '1 week'
+        AND fs.status != 'rejected'
+        AND m.main_protein IS NOT NULL
+    `);
+    const usedProteins = new Set(
+      thisWeekProteinsResult.rows.map((r) => r.main_protein)
+    );
+
+    // Rank meals by weighted score
+    const ranked = eligible
+      .map((meal) => {
+        const varietyBonus = usedProteins.has(meal.mainProtein) ? 0 : PROTEIN_VARIETY_BONUS;
+        const preferredBonus = meal.mainProtein && PREFERRED_PROTEINS.includes(meal.mainProtein) ? PREFERRED_PROTEIN_BONUS : 0;
+
+        const score =
+          meal.rating * RATING_WEIGHT +
+          meal.easinessScore * EASINESS_WEIGHT +
+          meal.healthScore * HEALTH_WEIGHT +
+          varietyBonus +
+          preferredBonus;
+
+        return { ...meal, score };
+      })
+      .sort((a, b) => b.score - a.score);
+
+    // Take top N meals
+    const chosen = ranked.slice(0, count);
+
+    // Insert into food_selections
+    const insertedSelections: MealSelection[] = [];
+    for (const meal of chosen) {
+      const result = await pool.query(
+        `INSERT INTO food_selections (meal_id, status) VALUES ($1, 'proposed') RETURNING *`,
+        [meal.id]
+      );
+      insertedSelections.push({
+        ...meal,
+        foodSelectionId: result.rows[0].id,
+        selectionStatus: result.rows[0].status,
+      });
+    }
+
+    const response: ChooseWeeklyMealsResponse = { meals: insertedSelections };
+    res.json(response);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    console.error("Error choosing weekly meals:", err);
+    res.status(500).json({ error: "Failed to choose weekly meals", details: message });
+  }
+});
+
+// POST /api/v1/rejectFoodItems
+// Body: { foodSelectionIds: number[] }
+router.post("/rejectFoodItems", async (req: Request, res: Response) => {
+  const { foodSelectionIds } = req.body;
+
+  if (!Array.isArray(foodSelectionIds) || foodSelectionIds.length === 0) {
+    res.status(400).json({ error: "foodSelectionIds must be a non-empty array" });
+    return;
+  }
+
+  try {
+    const result = await pool.query(
+      `UPDATE food_selections
+       SET status = 'rejected', updated_at = NOW()
+       WHERE id = ANY($1)
+       RETURNING *`,
+      [foodSelectionIds]
+    );
+
+    const response: RejectFoodItemsResponse = { updated: result.rows.map(toFoodSelection) };
+    res.json(response);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    console.error("Error rejecting food items:", err);
+    res.status(500).json({ error: "Failed to reject food items", details: message });
+  }
+});
+
+export default router;
