@@ -10,8 +10,11 @@
     "db:rollback": "node-pg-migrate down --migration-file-language sql -m migrations",
     "db:setup": "npm run db:create && npm run db:migrate",
     "db:reset": "npm run db:drop && npm run db:setup",
+    "db:seed": "psql -d meal_planner -v household_id=$HOUSEHOLD_ID -f scripts/seed-data.sql",
     "dev": "ts-node src/server.ts",
     "dev:client": "vite",
+    "build": "tsc && vite build",
+    "start": "node dist/server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -19,15 +22,21 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "bcrypt": "^6.0.0",
+    "cookie-parser": "^1.4.7",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
     "node-pg-migrate": "^8.0.4",
     "pg": "^8.20.0",
     "react": "^19.2.5",
     "react-dom": "^19.2.5"
   },
   "devDependencies": {
+    "@types/bcrypt": "^6.0.0",
+    "@types/cookie-parser": "^1.4.10",
     "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^25.6.0",
     "@types/pg": "^8.20.0",
     "@types/react": "^19.2.14",

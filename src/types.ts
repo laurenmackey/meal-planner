@@ -34,6 +34,29 @@ export interface FoodSelection {
   foodStapleId: number | null;
 }
 
+export interface User {
+  id: number;
+  email: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface Household {
+  id: number;
+  name: string;
+  inviteCode: string;
+}
+
+export interface AuthResponse {
+  user: { id: number; email: string };
+  household: Household;
+}
+
+export interface MeResponse {
+  user: { userId: number; email: string };
+  household: Household;
+}
+
 export interface ChooseWeeklyMealsResponse {
   meals: MealSelection[];
 }

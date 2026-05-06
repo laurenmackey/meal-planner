@@ -1,11 +1,16 @@
 import React, { useEffect, useState } from "react";
 import { MealSelection } from "../../src/types";
 import MealCard from "./components/MealCard";
+import AuthPage from "./components/AuthPage";
+import { apiFetch } from "./api";
 import "./App.css";
 
 const DEFAULT_COUNT = 3;
 
 export default function App() {
+  const [authed, setAuthed] = useState<boolean | null>(null);
+  const [inviteCode, setInviteCode] = useState<string | null>(null);
+  const [showInviteCode, setShowInviteCode] = useState(false);
   const [countInput, setCountInput] = useState(String(DEFAULT_COUNT));
   const count = countInput === "" ? 0 : Number(countInput);
   const [meals, setMeals] = useState<MealSelection[]>([]);
@@ -14,10 +19,33 @@ export default function App() {
   const [info, setInfo] = useState<string | null>(null);
   const [showIncludeAll, setShowIncludeAll] = useState(false);
 
+  // Check auth status on mount
   useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const res = await apiFetch("/api/v1/me");
+        if (res.ok) {
+          const data = await res.json();
+          setInviteCode(data.household.inviteCode);
+        }
+        setAuthed(res.ok);
+      } catch {
+        setAuthed(false);
+      }
+    };
+    checkAuth();
+  }, []);
+
+  // Load existing selections when authenticated
+  useEffect(() => {
+    if (!authed) return;
     const loadExistingSelections = async () => {
       try {
-        const res = await fetch("/api/v1/weeklySelections");
+        const res = await apiFetch("/api/v1/weeklySelections");
+        if (res.status === 401) {
+          setAuthed(false);
+          return;
+        }
         const data = await res.json();
         if (res.ok && data.meals.length > 0) {
           setMeals(data.meals);
@@ -27,7 +55,24 @@ export default function App() {
       }
     };
     loadExistingSelections();
-  }, []);
+  }, [authed]);
+
+  const handleLogout = async () => {
+    await apiFetch("/api/v1/logout", { method: "POST" });
+    setAuthed(false);
+    setMeals([]);
+    setError(null);
+    setInfo(null);
+    setShowIncludeAll(false);
+    setShowInviteCode(false);
+  };
+
+  // Show nothing while checking auth
+  if (authed === null) return null;
+
+  if (!authed) {
+    return <AuthPage onAuth={() => setAuthed(true)} />;
+  }
 
   const generateMeals = async (includeAll = false) => {
     setLoading(true);
@@ -35,9 +80,8 @@ export default function App() {
     setInfo(null);
     setShowIncludeAll(false);
     try {
-      const res = await fetch("/api/v1/chooseWeeklyMeals", {
+      const res = await apiFetch("/api/v1/chooseWeeklyMeals", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ count, includeAll }),
       });
       const data = await res.json();
@@ -72,9 +116,8 @@ export default function App() {
     setInfo(null);
     setShowIncludeAll(false);
     try {
-      const res = await fetch("/api/v1/rejectFoodSelections", {
+      const res = await apiFetch("/api/v1/rejectFoodSelections", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ foodSelectionIds }),
       });
       if (!res.ok) {
@@ -92,7 +135,21 @@ export default function App() {
 
   return (
     <div className="app">
-      <h1 className="title">🍽️ Meal Planner</h1>
+      <div className="app-header">
+        <h1 className="title">🍽️ Meal Planner</h1>
+        <div className="header-actions">
+          <button className="invite-button" onClick={() => setShowInviteCode(!showInviteCode)}>
+            {showInviteCode ? "Hide Invite Code" : "Invite Code"}
+          </button>
+          <button className="logout-button" onClick={handleLogout}>Log Out</button>
+        </div>
+      </div>
+
+      {showInviteCode && inviteCode && (
+        <div className="invite-code-banner">
+          Share this code with your household: <strong>{inviteCode}</strong>
+        </div>
+      )}
 
       <div className="controls">
         <label htmlFor="count">Number of meals:</label>
