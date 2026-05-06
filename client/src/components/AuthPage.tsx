@@ -60,6 +60,7 @@ export default function AuthPage({ onAuth }: AuthPageProps) {
         <input
           id="email"
           type="email"
+          autoComplete="username"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
@@ -69,6 +70,7 @@ export default function AuthPage({ onAuth }: AuthPageProps) {
         <input
           id="password"
           type="password"
+          autoComplete={isLogin ? "current-password" : "new-password"}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
