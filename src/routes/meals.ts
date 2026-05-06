@@ -1,7 +1,8 @@
-import { Router, Request, Response } from "express";
+import { Router, Response } from "express";
 import pool from "../db";
 import { Protein, MealSelection, ChooseWeeklyMealsResponse } from "../types";
 import { toMeal } from "../mappers";
+import { authenticate, AuthRequest } from "../middleware/auth";
 
 const router = Router();
 const LOOKBACK_WEEKS = 3;
@@ -16,7 +17,8 @@ const PREFERRED_PROTEINS: Protein[] = ['chicken', 'turkey', 'fish'];
 
 // POST /api/v1/chooseWeeklyMeals
 // Body: { count?: number, includeAll?: boolean }
-router.post("/chooseWeeklyMeals", async (req: Request, res: Response) => {
+router.post("/chooseWeeklyMeals", authenticate, async (req: AuthRequest, res: Response) => {
+  const householdId = req.user!.householdId;
   const count = req.body.count ?? 3;
   const includeAll = req.body.includeAll ?? false;
 
@@ -27,24 +29,28 @@ router.post("/chooseWeeklyMeals", async (req: Request, res: Response) => {
       SELECT fs.meal_id
       FROM food_selections fs
       WHERE fs.meal_id IS NOT NULL
+        AND fs.household_id = $1
         AND fs.chosen_at > NOW() - INTERVAL '1 week'
         AND fs.status != 'rejected'
     `;
     const eligibleMealsResult = includeAll
       ? await pool.query(`
         SELECT m.* FROM meals m
-        WHERE m.id NOT IN (${excludeCurrentQuery})
-      `)
+        WHERE m.household_id = $1
+          AND m.id NOT IN (${excludeCurrentQuery})
+      `, [householdId])
       : await pool.query(`
         SELECT m.*
         FROM meals m
-        WHERE m.id NOT IN (
+        WHERE m.household_id = $1
+          AND m.id NOT IN (
           SELECT fs.meal_id
           FROM food_selections fs
           WHERE fs.meal_id IS NOT NULL
+            AND fs.household_id = $1
             AND fs.chosen_at > NOW() - INTERVAL '${LOOKBACK_WEEKS} weeks'
         )
-      `);
+      `, [householdId]);
 
     const eligible = eligibleMealsResult.rows.map(toMeal);
 
@@ -59,10 +65,11 @@ router.post("/chooseWeeklyMeals", async (req: Request, res: Response) => {
       SELECT DISTINCT m.main_protein
       FROM food_selections fs
       JOIN meals m ON m.id = fs.meal_id
-      WHERE fs.chosen_at > NOW() - INTERVAL '1 week'
+      WHERE fs.household_id = $1
+        AND fs.chosen_at > NOW() - INTERVAL '1 week'
         AND fs.status != 'rejected'
         AND m.main_protein IS NOT NULL
-    `);
+    `, [householdId]);
     const usedProteins = new Set(
       thisWeekProteinsResult.rows.map((r) => r.main_protein)
     );
@@ -91,8 +98,8 @@ router.post("/chooseWeeklyMeals", async (req: Request, res: Response) => {
     const insertedSelections: MealSelection[] = [];
     for (const meal of chosen) {
       const result = await pool.query(
-        `INSERT INTO food_selections (meal_id, status) VALUES ($1, 'proposed') RETURNING *`,
-        [meal.id]
+        `INSERT INTO food_selections (meal_id, household_id, status) VALUES ($1, $2, 'proposed') RETURNING *`,
+        [meal.id, householdId]
       );
       insertedSelections.push({
         ...meal,

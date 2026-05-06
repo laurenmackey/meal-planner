@@ -1,21 +1,24 @@
-import { Router, Request, Response } from "express";
+import { Router, Response } from "express";
 import pool from "../db";
 import { MealSelection, ChooseWeeklyMealsResponse, RejectFoodSelectionsResponse } from "../types";
 import { toMeal, toFoodSelection } from "../mappers";
+import { authenticate, AuthRequest } from "../middleware/auth";
 
 const router = Router();
 
 // GET /api/v1/weeklySelections
 // Returns this week's non-rejected meal selections
-router.get("/weeklySelections", async (_req: Request, res: Response) => {
+router.get("/weeklySelections", authenticate, async (req: AuthRequest, res: Response) => {
+  const householdId = req.user!.householdId;
   try {
     const result = await pool.query(`
       SELECT m.*, fs.id AS food_selection_id, fs.status AS selection_status
       FROM food_selections fs
       JOIN meals m ON m.id = fs.meal_id
-      WHERE fs.chosen_at > NOW() - INTERVAL '1 week'
+      WHERE fs.household_id = $1
+        AND fs.chosen_at > NOW() - INTERVAL '1 week'
         AND fs.status != 'rejected'
-    `);
+    `, [householdId]);
 
     const meals: MealSelection[] = result.rows.map((row) => ({
       ...toMeal(row),
@@ -35,7 +38,8 @@ router.get("/weeklySelections", async (_req: Request, res: Response) => {
 
 // POST /api/v1/rejectFoodSelections
 // Body: { foodSelectionIds: number[] }
-router.post("/rejectFoodSelections", async (req: Request, res: Response) => {
+router.post("/rejectFoodSelections", authenticate, async (req: AuthRequest, res: Response) => {
+  const householdId = req.user!.householdId;
   const { foodSelectionIds } = req.body;
 
   if (!Array.isArray(foodSelectionIds) || foodSelectionIds.length === 0) {
@@ -47,9 +51,9 @@ router.post("/rejectFoodSelections", async (req: Request, res: Response) => {
     const result = await pool.query(
       `UPDATE food_selections
        SET status = 'rejected', updated_at = NOW()
-       WHERE id = ANY($1)
+       WHERE id = ANY($1) AND household_id = $2
        RETURNING *`,
-      [foodSelectionIds]
+      [foodSelectionIds, householdId]
     );
 
     const response: RejectFoodSelectionsResponse = { updated: result.rows.map(toFoodSelection) };
