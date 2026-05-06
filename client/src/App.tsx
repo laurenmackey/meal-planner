@@ -12,6 +12,7 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
+  const [showIncludeAll, setShowIncludeAll] = useState(false);
 
   useEffect(() => {
     const loadExistingSelections = async () => {
@@ -28,15 +29,16 @@ export default function App() {
     loadExistingSelections();
   }, []);
 
-  const generateMeals = async () => {
+  const generateMeals = async (includeAll = false) => {
     setLoading(true);
     setError(null);
     setInfo(null);
+    setShowIncludeAll(false);
     try {
       const res = await fetch("/api/v1/chooseWeeklyMeals", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ count }),
+        body: JSON.stringify({ count, includeAll }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -44,11 +46,18 @@ export default function App() {
         return;
       }
       if (data.meals.length === 0) {
-        setError("No eligible meals found. All meals have been chosen recently.");
+        setError("No eligible meals found. All meals have been chosen recently or are all displayed.");
+        // Only offer retry if we haven't already tried including all meals
+        if (!includeAll) {
+          setShowIncludeAll(true);
+        }
         return;
       }
       if (data.meals.length < count) {
         setInfo(`Only ${data.meals.length} eligible meal${data.meals.length === 1 ? "" : "s"} found — not enough meals available to fill your request.`);
+        if (!includeAll) {
+          setShowIncludeAll(true);
+        }
       }
       setMeals((prev) => [...prev, ...data.meals]);
     } catch {
@@ -59,6 +68,9 @@ export default function App() {
   };
 
   const rejectMeals = async (foodSelectionIds: number[]) => {
+    setError(null);
+    setInfo(null);
+    setShowIncludeAll(false);
     try {
       const res = await fetch("/api/v1/rejectFoodSelections", {
         method: "POST",
@@ -94,7 +106,7 @@ export default function App() {
         />
         <button
           className="generate-button"
-          onClick={generateMeals}
+          onClick={() => generateMeals()}
           disabled={loading || count < 1}
         >
           {loading ? "Generating..." : "Generate Meals"}
@@ -103,14 +115,32 @@ export default function App() {
 
       {error && (
         <div className="error-toast">
-          <span>{error}</span>
+          <span>
+            {error}
+            {showIncludeAll && (
+              <div>
+                <a href="#" className="include-all-link" onClick={(e) => { e.preventDefault(); generateMeals(true); }}>
+                  Include recently suggested meals
+                </a>
+              </div>
+            )}
+          </span>
           <button className="error-close" onClick={() => setError(null)}>×</button>
         </div>
       )}
 
       {info && (
         <div className="info-toast">
-          <span>{info}</span>
+          <span>
+            {info}
+            {showIncludeAll && (
+              <div>
+                <a href="#" className="include-all-link" onClick={(e) => { e.preventDefault(); generateMeals(true); }}>
+                  Include recently suggested meals
+                </a>
+              </div>
+            )}
+          </span>
           <button className="info-close" onClick={() => setInfo(null)}>×</button>
         </div>
       )}

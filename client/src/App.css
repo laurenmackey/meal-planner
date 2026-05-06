@@ -77,6 +77,18 @@
   margin-bottom: 16px;
 }
 
+.include-all-link {
+  color: #666;
+  font-size: 13px;
+  margin-top: 8px;
+  display: inline-block;
+  cursor: pointer;
+  padding: 4px 10px;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  text-decoration: none;
+}
+
 .info-close {
   background: none;
   border: none;

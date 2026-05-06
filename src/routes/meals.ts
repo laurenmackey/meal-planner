@@ -15,22 +15,36 @@ const PREFERRED_PROTEIN_BONUS = 1;
 const PREFERRED_PROTEINS: Protein[] = ['chicken', 'turkey', 'fish'];
 
 // POST /api/v1/chooseWeeklyMeals
-// Body: { count?: number }
+// Body: { count?: number, includeAll?: boolean }
 router.post("/chooseWeeklyMeals", async (req: Request, res: Response) => {
   const count = req.body.count ?? 3;
+  const includeAll = req.body.includeAll ?? false;
 
   try {
-    // Find eligible meals: not chosen in the last [lookback] weeks (or never chosen)
-    const eligibleMealsResult = await pool.query(`
-      SELECT m.*
-      FROM meals m
-      WHERE m.id NOT IN (
-        SELECT fs.meal_id
-        FROM food_selections fs
-        WHERE fs.meal_id IS NOT NULL
-          AND fs.chosen_at > NOW() - INTERVAL '${LOOKBACK_WEEKS} weeks'
-      )
-    `);
+    // Find eligible meals, optionally ignoring the lookback window
+    // Always exclude meals that are currently proposed/accepted this week
+    const excludeCurrentQuery = `
+      SELECT fs.meal_id
+      FROM food_selections fs
+      WHERE fs.meal_id IS NOT NULL
+        AND fs.chosen_at > NOW() - INTERVAL '1 week'
+        AND fs.status != 'rejected'
+    `;
+    const eligibleMealsResult = includeAll
+      ? await pool.query(`
+        SELECT m.* FROM meals m
+        WHERE m.id NOT IN (${excludeCurrentQuery})
+      `)
+      : await pool.query(`
+        SELECT m.*
+        FROM meals m
+        WHERE m.id NOT IN (
+          SELECT fs.meal_id
+          FROM food_selections fs
+          WHERE fs.meal_id IS NOT NULL
+            AND fs.chosen_at > NOW() - INTERVAL '${LOOKBACK_WEEKS} weeks'
+        )
+      `);
 
     const eligible = eligibleMealsResult.rows.map(toMeal);
 
