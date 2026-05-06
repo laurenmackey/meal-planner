@@ -38,6 +38,6 @@ export interface ChooseWeeklyMealsResponse {
   meals: MealSelection[];
 }
 
-export interface RejectFoodItemsResponse {
+export interface RejectFoodSelectionsResponse {
   updated: FoodSelection[];
 }

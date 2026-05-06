@@ -1,7 +1,7 @@
 import { Router, Request, Response } from "express";
 import pool from "../db";
-import { Protein, MealSelection, ChooseWeeklyMealsResponse, RejectFoodItemsResponse } from "../types";
-import { toMeal, toFoodSelection } from "../mappers";
+import { Protein, MealSelection, ChooseWeeklyMealsResponse } from "../types";
+import { toMeal } from "../mappers";
 
 const router = Router();
 const LOOKBACK_WEEKS = 3;
@@ -93,34 +93,6 @@ router.post("/chooseWeeklyMeals", async (req: Request, res: Response) => {
     const message = err instanceof Error ? err.message : "Unknown error";
     console.error("Error choosing weekly meals:", err);
     res.status(500).json({ error: "Failed to choose weekly meals", details: message });
-  }
-});
-
-// POST /api/v1/rejectFoodItems
-// Body: { foodSelectionIds: number[] }
-router.post("/rejectFoodItems", async (req: Request, res: Response) => {
-  const { foodSelectionIds } = req.body;
-
-  if (!Array.isArray(foodSelectionIds) || foodSelectionIds.length === 0) {
-    res.status(400).json({ error: "foodSelectionIds must be a non-empty array" });
-    return;
-  }
-
-  try {
-    const result = await pool.query(
-      `UPDATE food_selections
-       SET status = 'rejected', updated_at = NOW()
-       WHERE id = ANY($1)
-       RETURNING *`,
-      [foodSelectionIds]
-    );
-
-    const response: RejectFoodItemsResponse = { updated: result.rows.map(toFoodSelection) };
-    res.json(response);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    console.error("Error rejecting food items:", err);
-    res.status(500).json({ error: "Failed to reject food items", details: message });
   }
 });
 

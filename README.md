@@ -57,13 +57,17 @@ npm run db:setup
 
 This creates the `meal_planner` database and runs all migrations (schema + seed data).
 
-4. **Run the app:**
+4. **Run the app (two terminals):**
 
 ```bash
+# Terminal 1 - backend
 npm run dev
+
+# Terminal 2 - frontend
+npm run dev:client
 ```
 
-The server starts at http://localhost:3000.
+The backend runs at http://localhost:3000 and the frontend at http://localhost:5173.
 
 ## Database Scripts
 

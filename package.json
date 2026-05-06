@@ -11,6 +11,7 @@
     "db:setup": "npm run db:create && npm run db:migrate",
     "db:reset": "npm run db:drop && npm run db:setup",
     "dev": "ts-node src/server.ts",
+    "dev:client": "vite",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -21,13 +22,19 @@
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "node-pg-migrate": "^8.0.4",
-    "pg": "^8.20.0"
+    "pg": "^8.20.0",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",
     "@types/node": "^25.6.0",
     "@types/pg": "^8.20.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.1",
     "ts-node": "^10.9.2",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "vite": "^8.0.10"
   }
 }
