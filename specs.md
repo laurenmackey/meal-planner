@@ -77,10 +77,15 @@ I'd like to build a meal planner app to help automate the work of:
 ### Milestone 2 - Hosting and Auth
 - Determine a plan for hosting and auth. Can we use vercel with a database for free? How do we manage logins?
 
-### Milestone 3 - Automation Setup
+### Milestone 3 - Scrape NYTimes Cooking for Recipes
+- Can we integrate with claude agent to do this for us?
+- Should be able to take a URL and parse the meal and ingredients, then save the data to the database
+- Can we expand this to do the same for other (non NY Times Cooking) url's?
+
+### Milestone 4 - Automation Setup
 - Create cron job infrastructure to have a job that runs every Friday at 5pm PT. This job should hit the API chooseWeeklyMeals and then generate an email that lists the meals chosen and sends to lauren.m.mackey@gmail.com for now, but has the option to send to other emails in the future. The email should also contain a link to view the options in the UI and reject them there if needed.
 
-### Milestone 4 - Ingredients and Staples
+### Milestone 5 - Ingredients and Staples
 - Add a button to the UI to Accept and Generate Ingredients. This should hit two new API's: acceptMeals which takes food_selection_ids to accept and sets their status to accepted in food_selections, and generateIngredients, which looks up the ingredients needed for the meal_ids chosen and returns them in an aggregated fashion (e.g. 2 onions + 1 onion = 3 onions). The UI should display the ingredients in a list that allows the user to delete any from the list or edit the quantity or measurement_unit.
 
 - There should also be a link added for each meal to be able to edit the quantity. For example, the meals will have a serving_size stored in the db, which could mean "this meal feeds 4 people", meaning the ingredients tied to this meal will be enough for 4 people. However, you should be able to 1.5x, 2x, etc. the quantity, and the generateIngredients API should take this in as an argument and factor it in when returning the list of ingredients. The quantity adjustment could be a dropdown since we typically only need to 1.5x, 2x, or 3x a meal.
@@ -91,9 +96,6 @@ I'd like to build a meal planner app to help automate the work of:
 
 - There should be a new button for Send Ingredients to List. This implementation is TBD. We currently use Google Keep for our grocery list, not sure if it's feasible to build an API that updates our Google Keep list or if we should use something else for our list. Ideally it would add to an existing list and not overwrite anything already there. It would send all the staples and all the ingredients for the meals, including any adjustments made to quantity, measurement unit, etc. to the list. Ideally we could group the ingredients by store section as well.
 
-### Milestone 5 - Scrape NYTimes Cooking for Recipes
-- Can we integrate with claude agent to do this for us?
-
 ### Milestone 6 - Ratings and Ease Adjustments
 - Allow user to update fields per-recipe such as the rating and ease. May be able to incorporate part of milestone 10 here.
 
@@ -102,6 +104,7 @@ I'd like to build a meal planner app to help automate the work of:
 
 ### Milestone 8 - Recipes and Ingredients from Recipe Pictures and Other Sources
 - Can we integrate with claude agent to do this for us?
+- Can we run a weekly job to scrape NY Times Cooking and suggest new recipes we might like?
 
 ### Milestone 9 - Agentic Interactions
 - Instead of clicking buttons in the UI to regenerate/edit quantities/etc, can we have more of a text-based interaction with an agent interface to adjust the meals?
