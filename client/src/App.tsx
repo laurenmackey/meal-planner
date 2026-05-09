@@ -1,7 +1,9 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import { Routes, Route, useNavigate } from "react-router-dom";
 import { MealSelection } from "../../src/types";
 import MealCard from "./components/MealCard";
 import AuthPage from "./components/AuthPage";
+import AddRecipePage from "./components/AddRecipePage";
 import { apiFetch } from "./api";
 import "./App.css";
 
@@ -9,25 +11,11 @@ const DEFAULT_COUNT = 3;
 
 export default function App() {
   const [authed, setAuthed] = useState<boolean | null>(null);
-  const [inviteCode, setInviteCode] = useState<string | null>(null);
-  const [showInviteCode, setShowInviteCode] = useState(false);
-  const [countInput, setCountInput] = useState(String(DEFAULT_COUNT));
-  const count = countInput === "" ? 0 : Number(countInput);
-  const [meals, setMeals] = useState<MealSelection[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [info, setInfo] = useState<string | null>(null);
-  const [showIncludeAll, setShowIncludeAll] = useState(false);
 
-  // Check auth status on mount
   useEffect(() => {
     const checkAuth = async () => {
       try {
         const res = await apiFetch("/api/v1/me");
-        if (res.ok) {
-          const data = await res.json();
-          setInviteCode(data.household.inviteCode);
-        }
         setAuthed(res.ok);
       } catch {
         setAuthed(false);
@@ -36,43 +24,68 @@ export default function App() {
     checkAuth();
   }, []);
 
-  // Load existing selections when authenticated
-  useEffect(() => {
-    if (!authed) return;
-    const loadExistingSelections = async () => {
-      try {
-        const res = await apiFetch("/api/v1/weeklySelections");
-        if (res.status === 401) {
-          setAuthed(false);
-          return;
-        }
-        const data = await res.json();
-        if (res.ok && data.meals.length > 0) {
-          setMeals(data.meals);
-        }
-      } catch {
-        // Silently fail on initial load — user can still generate manually
-      }
-    };
-    loadExistingSelections();
-  }, [authed]);
-
-  const handleLogout = async () => {
-    await apiFetch("/api/v1/logout", { method: "POST" });
-    setAuthed(false);
-    setMeals([]);
-    setError(null);
-    setInfo(null);
-    setShowIncludeAll(false);
-    setShowInviteCode(false);
-  };
-
-  // Show nothing while checking auth
   if (authed === null) return null;
 
   if (!authed) {
     return <AuthPage onAuth={() => setAuthed(true)} />;
   }
+
+  return (
+    <Routes>
+      <Route path="/" element={<HomePage onLogout={() => setAuthed(false)} />} />
+      <Route path="/add-recipe" element={<AddRecipePage />} />
+    </Routes>
+  );
+}
+
+function HomePage({ onLogout }: { onLogout: () => void }) {
+  const navigate = useNavigate();
+  const [inviteCode, setInviteCode] = useState<string | null>(null);
+  const [showInviteCode, setShowInviteCode] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [countInput, setCountInput] = useState(String(DEFAULT_COUNT));
+  const count = countInput === "" ? 0 : Number(countInput);
+  const [meals, setMeals] = useState<MealSelection[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
+  const [showIncludeAll, setShowIncludeAll] = useState(false);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const meRes = await apiFetch("/api/v1/me");
+        if (meRes.ok) {
+          const data = await meRes.json();
+          setInviteCode(data.household.inviteCode);
+        }
+      } catch {}
+      try {
+        const res = await apiFetch("/api/v1/weeklySelections");
+        const data = await res.json();
+        if (res.ok && data.meals.length > 0) {
+          setMeals(data.meals);
+        }
+      } catch {}
+    };
+    loadData();
+  }, []);
+
+  const handleLogout = async () => {
+    await apiFetch("/api/v1/logout", { method: "POST" });
+    onLogout(); // unmounts HomePage, so no need to clear local state
+  };
 
   const generateMeals = async (includeAll = false) => {
     setLoading(true);
@@ -137,17 +150,28 @@ export default function App() {
     <div className="app">
       <div className="app-header">
         <h1 className="title">🍽️ Meal Planner</h1>
-        <div className="header-actions">
-          <button className="invite-button" onClick={() => setShowInviteCode(!showInviteCode)}>
-            {showInviteCode ? "Hide Invite Code" : "Invite Code"}
+        <div className="menu-wrapper" ref={menuRef}>
+          <button className="menu-button" onClick={() => setMenuOpen(!menuOpen)}>
+            <span className="menu-icon" />
+            <span className="menu-icon" />
+            <span className="menu-icon" />
           </button>
-          <button className="logout-button" onClick={handleLogout}>Log Out</button>
+          {menuOpen && (
+            <div className="menu-dropdown">
+              <button onClick={() => { navigate("/add-recipe"); setMenuOpen(false); }}>Add Recipe</button>
+              <button onClick={() => { setShowInviteCode(!showInviteCode); setMenuOpen(false); }}>
+                {showInviteCode ? "Hide Invite Code" : "Show Invite Code"}
+              </button>
+              <button onClick={handleLogout}>Log Out</button>
+            </div>
+          )}
         </div>
       </div>
 
       {showInviteCode && inviteCode && (
         <div className="invite-code-banner">
-          Share this code with your household: <strong>{inviteCode}</strong>
+          <span>Share this code with your household: <strong>{inviteCode}</strong></span>
+          <button className="invite-close" onClick={() => setShowInviteCode(false)}>x</button>
         </div>
       )}
 
@@ -182,7 +206,7 @@ export default function App() {
               </div>
             )}
           </span>
-          <button className="error-close" onClick={() => setError(null)}>×</button>
+          <button className="error-close" onClick={() => setError(null)}>x</button>
         </div>
       )}
 
@@ -198,7 +222,7 @@ export default function App() {
               </div>
             )}
           </span>
-          <button className="info-close" onClick={() => setInfo(null)}>×</button>
+          <button className="info-close" onClick={() => setInfo(null)}>x</button>
         </div>
       )}
 

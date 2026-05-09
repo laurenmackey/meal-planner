@@ -1,5 +1,6 @@
 import { Router, Response } from "express";
 import Anthropic from "@anthropic-ai/sdk";
+import pool from "../db";
 import { authenticate, AuthRequest } from "../middleware/auth";
 import { ParsedRecipe, MEASUREMENT_UNITS, PROTEINS } from "../types";
 
@@ -121,6 +122,59 @@ router.post("/parseRecipe", authenticate, async (req: AuthRequest, res: Response
     const message = err instanceof Error ? err.message : "Unknown error";
     console.error("Error parsing recipe:", err);
     res.status(500).json({ error: "Failed to parse recipe", details: message });
+  }
+});
+
+// POST /api/v1/saveRecipe
+// Body: ParsedRecipe + { rating, easinessScore, healthScore }
+router.post("/saveRecipe", authenticate, async (req: AuthRequest, res: Response) => {
+  const { name, url, sourceName, description, notes, prepTimeMinutes, cookTimeMinutes, mainProtein, servingSize, ingredients, rating, easinessScore, healthScore } = req.body;
+  const householdId = req.user!.householdId;
+
+  if (!name || !rating || !easinessScore || !healthScore || !servingSize) {
+    res.status(400).json({ error: "Missing required fields" });
+    return;
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    const mealResult = await client.query(
+      `INSERT INTO meals (name, url, source_name, description, notes, prep_time_minutes, cook_time_minutes, main_protein, rating, easiness_score, health_score, serving_size, household_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+       RETURNING id`,
+      [name, url || null, sourceName || null, description || null, notes || null, prepTimeMinutes || null, cookTimeMinutes || null, mainProtein || "none", rating, easinessScore, healthScore, servingSize, householdId]
+    );
+
+    const mealId = mealResult.rows[0].id;
+
+    if (ingredients && ingredients.length > 0) {
+      const values: unknown[] = [];
+      const placeholders: string[] = [];
+      let paramIndex = 1;
+
+      for (const ing of ingredients) {
+        placeholders.push(`($${paramIndex}, $${paramIndex + 1}, $${paramIndex + 2}, $${paramIndex + 3}, $${paramIndex + 4}, $${paramIndex + 5})`);
+        values.push(mealId, ing.name, ing.quantity, ing.measurementUnit, ing.optional || false, ing.notes || null);
+        paramIndex += 6;
+      }
+
+      await client.query(
+        `INSERT INTO ingredients (meal_id, name, quantity, measurement_unit, optional, notes) VALUES ${placeholders.join(", ")}`,
+        values
+      );
+    }
+
+    await client.query("COMMIT");
+    res.json({ mealId });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    const message = err instanceof Error ? err.message : "Unknown error";
+    console.error("Error saving recipe:", err);
+    res.status(500).json({ error: "Failed to save recipe", details: message });
+  } finally {
+    client.release();
   }
 });
 
