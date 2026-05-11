@@ -358,6 +358,13 @@
   cursor: pointer;
 }
 
+.paste-fallback {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
 /* Add Recipe page */
 .parse-form {
   display: flex;
@@ -379,6 +386,12 @@
   border-radius: 8px;
   padding: 20px;
   margin-top: 16px;
+}
+
+.recipe-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .recipe-name {
@@ -410,6 +423,93 @@
   padding-left: 20px;
   font-size: 14px;
   line-height: 1.8;
+}
+
+.edit-section {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.edit-section > label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 14px;
+  color: #333;
+}
+
+.edit-input {
+  flex: 1;
+  padding: 6px 10px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.edit-input-sm {
+  width: 70px;
+  padding: 6px 10px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.edit-select {
+  padding: 6px 10px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.edit-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.edit-row label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 14px;
+  color: #333;
+}
+
+.ingredient-edit-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.ingredient-edit-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.optional-check {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 12px;
+  color: #666;
+  white-space: nowrap;
+}
+
+.remove-ingredient {
+  background: none;
+  border: none;
+  color: #c1121f;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 2px 6px;
 }
 
 .score-section {

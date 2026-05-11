@@ -12,12 +12,14 @@ async function fetchRecipePage(url: string): Promise<string> {
   const nytCookie = process.env.NYT_COOKING_COOKIE;
   const headers: Record<string, string> = {
     "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
   };
-  if (nytCookie) {
+  if (nytCookie && url.includes("nytimes.com")) {
     headers["Cookie"] = nytCookie;
   }
 
-  const res = await fetch(url, { headers });
+  const res = await fetch(url, { headers, redirect: "follow" });
   if (!res.ok) {
     throw new Error(`Failed to fetch recipe page: ${res.status} ${res.statusText}`);
   }
@@ -100,14 +102,15 @@ ${html.substring(0, 50000)}`,
   return {
     ...parsed,
     url,
-    sourceName: parsed.sourceName || "NYT Cooking",
+    sourceName: parsed.sourceName || null,
   };
 }
 
 // POST /api/v1/parseRecipe
-// Body: { url: string }
+// Body: { url: string, text?: string }
+// If text is provided, parse from that instead of fetching the URL
 router.post("/parseRecipe", authenticate, async (req: AuthRequest, res: Response) => {
-  const { url } = req.body;
+  const { url, text } = req.body;
 
   if (!url || typeof url !== "string") {
     res.status(400).json({ error: "url is required" });
@@ -115,8 +118,18 @@ router.post("/parseRecipe", authenticate, async (req: AuthRequest, res: Response
   }
 
   try {
-    const html = await fetchRecipePage(url);
-    const recipe = await parseRecipeWithClaude(html, url);
+    const householdId = req.user!.householdId;
+    const existing = await pool.query(
+      "SELECT id FROM meals WHERE url = $1 AND household_id = $2",
+      [url, householdId]
+    );
+    if (existing.rows.length > 0) {
+      res.status(409).json({ error: "This recipe has already been saved" });
+      return;
+    }
+
+    const content = text || await fetchRecipePage(url);
+    const recipe = await parseRecipeWithClaude(content, url);
     res.json(recipe);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";

@@ -80,7 +80,7 @@ export interface ParsedIngredient {
 export interface ParsedRecipe {
   name: string;
   url: string;
-  sourceName: string;
+  sourceName: string | null;
   description: string | null;
   prepTimeMinutes: number | null;
   cookTimeMinutes: number | null;
