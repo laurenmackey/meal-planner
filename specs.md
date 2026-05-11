@@ -114,3 +114,7 @@ I'd like to build a meal planner app to help automate the work of:
 
 ### Milestone 10 - Agentic Interactions
 - Instead of clicking buttons in the UI to regenerate/edit quantities/etc, can we have more of a text-based interaction with an agent interface to adjust the meals?
+
+### Milestone 11 - Resend custom domain
+- Set up custom domain on Resend so the weekly email will send to Spencer along with me
+- Remove logic related to RESEND_ALLOWED_EMAILS
