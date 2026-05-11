@@ -1,4 +1,5 @@
-export type Protein = 'chicken' | 'beef' | 'pork' | 'turkey' | 'fish' | 'shrimp' | 'prawns' | 'crab' | 'tofu' | 'none' | 'other';
+export const PROTEINS = ['chicken', 'beef', 'pork', 'turkey', 'lamb', 'fish', 'shrimp', 'prawns', 'crab', 'tofu', 'none', 'other'] as const;
+export type Protein = typeof PROTEINS[number];
 export type SelectionStatus = 'proposed' | 'rejected' | 'accepted';
 
 export interface Meal {
@@ -63,4 +64,27 @@ export interface ChooseWeeklyMealsResponse {
 
 export interface RejectFoodSelectionsResponse {
   updated: FoodSelection[];
+}
+
+export const MEASUREMENT_UNITS = ['cups', 'tbsp', 'tsp', 'oz', 'lb', 'g', 'ml', 'l', 'whole', 'cloves', 'pinch', 'to_taste'] as const;
+export type MeasurementUnit = typeof MEASUREMENT_UNITS[number];
+
+export interface ParsedIngredient {
+  name: string;
+  quantity: number;
+  measurementUnit: MeasurementUnit;
+  optional: boolean;
+  notes: string | null;
+}
+
+export interface ParsedRecipe {
+  name: string;
+  url: string;
+  sourceName: string | null;
+  description: string | null;
+  prepTimeMinutes: number | null;
+  cookTimeMinutes: number | null;
+  mainProtein: Protein | null;
+  servingSize: number;
+  ingredients: ParsedIngredient[];
 }
