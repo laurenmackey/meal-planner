@@ -5,6 +5,7 @@ import authRouter from "./routes/auth";
 import mealsRouter from "./routes/meals";
 import foodSelectionsRouter from "./routes/foodSelections";
 import recipesRouter from "./routes/recipes";
+import { startWeeklyMealCron } from "./cron/weeklyMeals";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -25,4 +26,5 @@ app.get("{*path}", (_req, res) => {
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+  startWeeklyMealCron();
 });
