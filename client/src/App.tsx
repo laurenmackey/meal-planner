@@ -1,9 +1,11 @@
-import React, { useEffect, useRef, useState } from "react";
-import { Routes, Route, useNavigate } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { Routes, Route } from "react-router-dom";
 import { MealSelection } from "../../src/types";
 import MealCard from "./components/MealCard";
 import AuthPage from "./components/AuthPage";
 import AddRecipePage from "./components/AddRecipePage";
+import MealHistoryPage from "./components/MealHistoryPage";
+import AppHeader from "./components/AppHeader";
 import { apiFetch } from "./api";
 import "./App.css";
 
@@ -30,20 +32,18 @@ export default function App() {
     return <AuthPage onAuth={() => setAuthed(true)} />;
   }
 
+  const handleLogout = () => setAuthed(false);
+
   return (
     <Routes>
-      <Route path="/" element={<HomePage onLogout={() => setAuthed(false)} />} />
-      <Route path="/add-recipe" element={<AddRecipePage />} />
+      <Route path="/" element={<HomePage onLogout={handleLogout} />} />
+      <Route path="/add-recipe" element={<AddRecipePage onLogout={handleLogout} />} />
+      <Route path="/history" element={<MealHistoryPage onLogout={handleLogout} />} />
     </Routes>
   );
 }
 
 function HomePage({ onLogout }: { onLogout: () => void }) {
-  const navigate = useNavigate();
-  const [inviteCode, setInviteCode] = useState<string | null>(null);
-  const [showInviteCode, setShowInviteCode] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
   const [countInput, setCountInput] = useState(String(DEFAULT_COUNT));
   const count = countInput === "" ? 0 : Number(countInput);
   const [meals, setMeals] = useState<MealSelection[]>([]);
@@ -53,24 +53,7 @@ function HomePage({ onLogout }: { onLogout: () => void }) {
   const [showIncludeAll, setShowIncludeAll] = useState(false);
 
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setMenuOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        const meRes = await apiFetch("/api/v1/me");
-        if (meRes.ok) {
-          const data = await meRes.json();
-          setInviteCode(data.household.inviteCode);
-        }
-      } catch {}
+    const loadSelections = async () => {
       try {
         const res = await apiFetch("/api/v1/weeklySelections");
         const data = await res.json();
@@ -79,13 +62,8 @@ function HomePage({ onLogout }: { onLogout: () => void }) {
         }
       } catch {}
     };
-    loadData();
+    loadSelections();
   }, []);
-
-  const handleLogout = async () => {
-    await apiFetch("/api/v1/logout", { method: "POST" });
-    onLogout(); // unmounts HomePage, so no need to clear local state
-  };
 
   const generateMeals = async (includeAll = false) => {
     setLoading(true);
@@ -148,32 +126,7 @@ function HomePage({ onLogout }: { onLogout: () => void }) {
 
   return (
     <div className="app">
-      <div className="app-header">
-        <h1 className="title">🍽️ Meal Planner</h1>
-        <div className="menu-wrapper" ref={menuRef}>
-          <button className="menu-button" onClick={() => setMenuOpen(!menuOpen)}>
-            <span className="menu-icon" />
-            <span className="menu-icon" />
-            <span className="menu-icon" />
-          </button>
-          {menuOpen && (
-            <div className="menu-dropdown">
-              <button onClick={() => { navigate("/add-recipe"); setMenuOpen(false); }}>Add Recipe</button>
-              <button onClick={() => { setShowInviteCode(!showInviteCode); setMenuOpen(false); }}>
-                {showInviteCode ? "Hide Invite Code" : "Show Invite Code"}
-              </button>
-              <button onClick={handleLogout}>Log Out</button>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {showInviteCode && inviteCode && (
-        <div className="invite-code-banner">
-          <span>Share this code with your household: <strong>{inviteCode}</strong></span>
-          <button className="invite-close" onClick={() => setShowInviteCode(false)}>x</button>
-        </div>
-      )}
+      <AppHeader title="🍽️ Meal Planner" onLogout={onLogout} />
 
       <div className="controls">
         <label htmlFor="count">Number of meals:</label>
@@ -229,7 +182,7 @@ function HomePage({ onLogout }: { onLogout: () => void }) {
       {meals.length > 0 && (
         <div>
           <div className="meals-header">
-            <h2>Suggested Meals</h2>
+            <h2>This Week's Meals</h2>
             <button
               className="reject-button"
               onClick={() => rejectMeals(meals.map((m) => m.foodSelectionId))}

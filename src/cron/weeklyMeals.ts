@@ -4,9 +4,12 @@ import pool from "../db";
 import { chooseWeeklyMeals, DEFAULT_MEAL_COUNT } from "../services/mealSelection";
 import { MealSelection } from "../types";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
 const APP_URL = process.env.APP_URL || "http://localhost:3000";
 const EMAIL_FROM = process.env.EMAIL_FROM || "Meal Planner <onboarding@resend.dev>";
+
+function getResend() {
+  return new Resend(process.env.RESEND_API_KEY);
+}
 
 function buildEmailHtml(meals: MealSelection[]): string {
   if (meals.length === 0) {
@@ -86,7 +89,7 @@ async function runWeeklyMealJob() {
       const recipients = emails.filter((e) => allowedEmails.includes(e));
       if (recipients.length === 0) continue;
 
-      const result = await resend.emails.send({
+      const result = await getResend().emails.send({
         from: EMAIL_FROM,
         to: recipients,
         subject: `🍽️ Your Weekly Meal Suggestions (${meals.length} meals)`,

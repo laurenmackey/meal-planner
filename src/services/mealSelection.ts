@@ -21,7 +21,7 @@ export async function chooseWeeklyMeals(
     FROM food_selections fs
     WHERE fs.meal_id IS NOT NULL
       AND fs.household_id = $1
-      AND fs.chosen_at > NOW() - INTERVAL '1 week'
+      AND fs.chosen_at >= DATE_TRUNC('week', CURRENT_DATE)
       AND fs.status != 'rejected'
   `;
   const eligibleMealsResult = includeAll
@@ -56,7 +56,7 @@ export async function chooseWeeklyMeals(
      FROM food_selections fs
      JOIN meals m ON m.id = fs.meal_id
      WHERE fs.household_id = $1
-       AND fs.chosen_at > NOW() - INTERVAL '1 week'
+       AND fs.chosen_at >= DATE_TRUNC('week', CURRENT_DATE)
        AND fs.status != 'rejected'
        AND m.main_protein IS NOT NULL`,
     [householdId]
