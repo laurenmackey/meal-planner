@@ -1,6 +1,6 @@
 export const PROTEINS = ['chicken', 'beef', 'pork', 'turkey', 'lamb', 'fish', 'shrimp', 'prawns', 'crab', 'tofu', 'none', 'other'] as const;
 export type Protein = typeof PROTEINS[number];
-export type SelectionStatus = 'proposed' | 'rejected' | 'accepted';
+export type SelectionStatus = 'proposed' | 'rejected';
 
 export interface Meal {
   id: number;
@@ -75,6 +75,14 @@ export interface ParsedIngredient {
   measurementUnit: MeasurementUnit;
   optional: boolean;
   notes: string | null;
+}
+
+export interface AggregatedIngredient {
+  name: string;
+  quantity: number;
+  measurementUnit: MeasurementUnit;
+  sources: string[];
+  optional: boolean;
 }
 
 export interface ParsedRecipe {

@@ -1,10 +1,43 @@
 import { Router, Response } from "express";
 import pool from "../db";
-import { MealSelection, ChooseWeeklyMealsResponse, RejectFoodSelectionsResponse } from "../types";
+import { MealSelection, AggregatedIngredient, ChooseWeeklyMealsResponse, RejectFoodSelectionsResponse } from "../types";
 import { toMeal, toFoodSelection } from "../mappers";
 import { authenticate, AuthRequest } from "../middleware/auth";
 
 const router = Router();
+
+// Unit conversion: convert compatible units to a common base before aggregating
+// Volume (US): base = tsp  (1 tbsp = 3 tsp, 1 cup = 48 tsp)
+// Weight (US): base = oz   (1 lb = 16 oz)
+// Metric weight: base = g  (no other metric weight units currently)
+// Metric volume: base = ml (1 l = 1000 ml)
+const UNIT_GROUPS: Record<string, { base: string; units: Record<string, number> }> = {
+  volume: { base: "tsp", units: { tsp: 1, tbsp: 3, cups: 48 } },
+  weight: { base: "oz", units: { oz: 1, lb: 16 } },
+  metric_weight: { base: "g", units: { g: 1 } },
+  metric_volume: { base: "ml", units: { ml: 1, l: 1000 } },
+};
+
+// Map each unit to its group
+const UNIT_TO_GROUP: Record<string, { group: string; factor: number }> = {};
+for (const [groupName, group] of Object.entries(UNIT_GROUPS)) {
+  for (const [unit, factor] of Object.entries(group.units)) {
+    UNIT_TO_GROUP[unit] = { group: groupName, factor };
+  }
+}
+
+// Pick the best display unit: use the largest unit where quantity >= 1
+function bestDisplayUnit(baseQuantity: number, groupName: string): { quantity: number; unit: string } {
+  const group = UNIT_GROUPS[groupName];
+  const sorted = Object.entries(group.units).sort((a, b) => b[1] - a[1]); // largest first
+  for (const [unit, factor] of sorted) {
+    const converted = baseQuantity / factor;
+    if (converted >= 1) {
+      return { quantity: Math.round(converted * 100) / 100, unit };
+    }
+  }
+  return { quantity: Math.round(baseQuantity * 100) / 100, unit: group.base };
+}
 
 // GET /api/v1/weeklySelections
 // Returns this week's non-rejected meal selections
@@ -62,6 +95,80 @@ router.post("/rejectFoodSelections", authenticate, async (req: AuthRequest, res:
     const message = err instanceof Error ? err.message : "Unknown error";
     console.error("Error rejecting food items:", err);
     res.status(500).json({ error: "Failed to reject food items", details: message });
+  }
+});
+
+// POST /api/v1/generateIngredients
+// Body: { mealIds: number[], multipliers?: Record<number, number> }
+// Returns aggregated ingredients across all meals
+router.post("/generateIngredients", authenticate, async (req: AuthRequest, res: Response) => {
+  const householdId = req.user!.householdId;
+  const { mealIds, multipliers } = req.body;
+
+  if (!Array.isArray(mealIds) || mealIds.length === 0) {
+    res.status(400).json({ error: "mealIds must be a non-empty array" });
+    return;
+  }
+
+  try {
+    const result = await pool.query(
+      `SELECT i.*, m.name AS meal_name
+       FROM ingredients i
+       JOIN meals m ON m.id = i.meal_id
+       WHERE i.meal_id = ANY($1) AND m.household_id = $2
+      ORDER BY i.optional ASC, i.name ASC`,
+      [mealIds, householdId]
+    );
+
+    // Aggregate by name, converting compatible units to a common base
+    // For convertible units: aggregate in base units, then pick best display unit
+    // For non-convertible units (whole, cloves, pinch, to_taste): aggregate by name + unit
+    const baseAggregated: Record<string, { name: string; baseQuantity: number; group: string; sources: string[]; optional: boolean }> = {};
+    const directAggregated: Record<string, AggregatedIngredient> = {};
+
+    for (const row of result.rows) {
+      const multiplier = multipliers?.[row.meal_id] || 1;
+      const quantity = Number(row.quantity) * multiplier;
+      const unitInfo = UNIT_TO_GROUP[row.measurement_unit];
+
+      if (unitInfo) {
+        // Convertible unit — aggregate in base units by name + group
+        const key = `${row.name}::${unitInfo.group}`;
+        if (!baseAggregated[key]) {
+          baseAggregated[key] = { name: row.name, baseQuantity: 0, group: unitInfo.group, sources: [], optional: true };
+        }
+        baseAggregated[key].baseQuantity += quantity * unitInfo.factor;
+        if (!row.optional) baseAggregated[key].optional = false;
+        if (!baseAggregated[key].sources.includes(row.meal_name)) {
+          baseAggregated[key].sources.push(row.meal_name);
+        }
+      } else {
+        // Non-convertible unit — aggregate by name + unit directly
+        const key = `${row.name}::${row.measurement_unit}`;
+        if (!directAggregated[key]) {
+          directAggregated[key] = { name: row.name, quantity: 0, measurementUnit: row.measurement_unit, sources: [], optional: true };
+        }
+        directAggregated[key].quantity += quantity;
+        if (!row.optional) directAggregated[key].optional = false;
+        if (!directAggregated[key].sources.includes(row.meal_name)) {
+          directAggregated[key].sources.push(row.meal_name);
+        }
+      }
+    }
+
+    // Convert base-aggregated back to best display units
+    const convertedIngredients: AggregatedIngredient[] = Object.values(baseAggregated).map((entry) => {
+      const { quantity, unit } = bestDisplayUnit(entry.baseQuantity, entry.group);
+      return { name: entry.name, quantity, measurementUnit: unit as AggregatedIngredient["measurementUnit"], sources: entry.sources, optional: entry.optional };
+    });
+
+    const ingredients = [...convertedIngredients, ...Object.values(directAggregated)]
+      .sort((a, b) => a.name.localeCompare(b.name));
+    res.json({ ingredients });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    console.error("Error generating ingredients:", err);
+    res.status(500).json({ error: "Failed to generate ingredients", details: message });
   }
 });
 

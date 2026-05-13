@@ -656,3 +656,35 @@
   color: #0f5132;
   font-weight: 500;
 }
+
+/* Ingredients section */
+.ingredients-section {
+  margin-top: 32px;
+  padding-top: 16px;
+  border-top: 1px solid #eee;
+}
+
+.ingredients-heading {
+  font-family: 'Libre Baskerville', serif;
+  color: #444;
+  margin: 0 0 16px;
+}
+
+.ingredient-name {
+  font-weight: 500;
+}
+
+.ingredient-sources {
+  color: #888;
+  font-size: 13px;
+}
+
+.optional-tag {
+  color: #999;
+  font-weight: normal;
+  font-style: italic;
+}
+
+.ingredients-button {
+  margin-top: 16px;
+}

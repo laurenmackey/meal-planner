@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Routes, Route } from "react-router-dom";
-import { MealSelection } from "../../src/types";
+import { MealSelection, AggregatedIngredient, MEASUREMENT_UNITS } from "../../src/types";
 import MealCard from "./components/MealCard";
 import AuthPage from "./components/AuthPage";
 import AddRecipePage from "./components/AddRecipePage";
@@ -51,6 +51,8 @@ function HomePage({ onLogout }: { onLogout: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [showIncludeAll, setShowIncludeAll] = useState(false);
+  const [ingredients, setIngredients] = useState<AggregatedIngredient[] | null>(null);
+  const [generatingIngredients, setGeneratingIngredients] = useState(false);
 
   useEffect(() => {
     const loadSelections = async () => {
@@ -122,6 +124,38 @@ function HomePage({ onLogout }: { onLogout: () => void }) {
     } catch {
       setError("Failed to connect to server");
     }
+  };
+
+  const generateIngredients = async () => {
+    setGeneratingIngredients(true);
+    setError(null);
+    try {
+      const mealIds = meals.map((m) => m.id);
+      const res = await apiFetch("/api/v1/generateIngredients", {
+        method: "POST",
+        body: JSON.stringify({ mealIds }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Failed to generate ingredients");
+        return;
+      }
+      setIngredients(data.ingredients);
+    } catch {
+      setError("Failed to connect to server");
+    } finally {
+      setGeneratingIngredients(false);
+    }
+  };
+
+  const removeIngredient = (index: number) => {
+    setIngredients((prev) => prev ? prev.filter((_, i) => i !== index) : null);
+  };
+
+  const updateIngredient = (index: number, updates: Partial<AggregatedIngredient>) => {
+    setIngredients((prev) =>
+      prev ? prev.map((ing, i) => (i === index ? { ...ing, ...updates } : ing)) : null
+    );
   };
 
   return (
@@ -198,6 +232,50 @@ function HomePage({ onLogout }: { onLogout: () => void }) {
               onReject={(id) => rejectMeals([id])}
             />
           ))}
+
+          <button
+            className="generate-button ingredients-button"
+            onClick={generateIngredients}
+            disabled={generatingIngredients || ingredients !== null}
+          >
+            {generatingIngredients ? "Generating..." : "Generate Ingredients"}
+          </button>
+        </div>
+      )}
+
+      {ingredients && (
+        <div className="ingredients-section">
+          <h2 className="ingredients-heading">Ingredients</h2>
+          {ingredients.length === 0 ? (
+            <p className="empty-state">No ingredients found for the selected meals.</p>
+          ) : (
+            <div className="ingredient-edit-list">
+              {ingredients.map((ing, i) => (
+                <div key={i} className="ingredient-edit-row">
+                  <input
+                    className="edit-input-sm"
+                    type="number"
+                    step="any"
+                    min="0"
+                    defaultValue={ing.quantity}
+                    onBlur={(e) => updateIngredient(i, { quantity: Number(e.target.value) || 0 })}
+                  />
+                  <select
+                    className="edit-select"
+                    value={ing.measurementUnit}
+                    onChange={(e) => updateIngredient(i, { measurementUnit: e.target.value as AggregatedIngredient["measurementUnit"] })}
+                  >
+                    {MEASUREMENT_UNITS.map((u) => (
+                      <option key={u} value={u}>{u}</option>
+                    ))}
+                  </select>
+                  <span className="ingredient-name">{ing.name}{ing.optional && <span className="optional-tag"> (optional)</span>}</span>
+                  <span className="ingredient-sources">({ing.sources.join(", ")})</span>
+                  <button className="remove-ingredient" onClick={() => removeIngredient(i)}>x</button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
