@@ -76,6 +76,9 @@ export default function MealHistoryPage({ onLogout }: { onLogout: () => void }) 
                   {week.meals.map((meal) => (
                     <li key={meal.foodSelectionId} className="history-meal-item">
                       <strong>{meal.name}</strong>
+                      {meal.servingSizeMultiplier > 1 && (
+                        <span className="history-meal-multiplier"> ({meal.servingSizeMultiplier}x)</span>
+                      )}
                       {meal.description && <span className="history-meal-desc"> — {meal.description}</span>}
                       {meal.url && (
                         <a href={meal.url} target="_blank" rel="noopener noreferrer" className="history-meal-link">

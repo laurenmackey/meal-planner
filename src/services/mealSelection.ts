@@ -98,6 +98,7 @@ export async function chooseWeeklyMeals(
       ...meal,
       foodSelectionId: result.rows[0].id,
       selectionStatus: result.rows[0].status,
+      servingSizeMultiplier: 1,
     });
   }
 

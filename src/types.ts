@@ -20,9 +20,13 @@ export interface Meal {
   servingSize: number;
 }
 
+export const SERVING_MULTIPLIERS = [1, 1.5, 2, 3] as const;
+export type ServingMultiplier = typeof SERVING_MULTIPLIERS[number];
+
 export interface MealSelection extends Meal {
   foodSelectionId: number;
   selectionStatus: SelectionStatus;
+  servingSizeMultiplier: number;
   score: number;
 }
 

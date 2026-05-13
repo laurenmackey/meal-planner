@@ -158,6 +158,26 @@
   border: 1px solid #c1121f;
 }
 
+.meal-multiplier {
+  margin-top: 8px;
+  font-size: 14px;
+  color: #555;
+}
+
+.meal-multiplier label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.multiplier-select {
+  padding: 4px 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
+  font-family: inherit;
+}
+
 /* Auth page */
 .auth-page {
   max-width: 400px;
@@ -411,6 +431,11 @@
   padding: 8px 0;
   border-top: 1px solid #eee;
   font-size: 14px;
+}
+
+.history-meal-multiplier {
+  color: #2d6a4f;
+  font-size: 13px;
 }
 
 .history-meal-desc {

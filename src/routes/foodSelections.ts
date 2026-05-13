@@ -45,7 +45,8 @@ router.get("/weeklySelections", authenticate, async (req: AuthRequest, res: Resp
   const householdId = req.user!.householdId;
   try {
     const result = await pool.query(`
-      SELECT m.*, fs.id AS food_selection_id, fs.status AS selection_status
+      SELECT m.*, fs.id AS food_selection_id, fs.status AS selection_status,
+             fs.serving_size_multiplier
       FROM food_selections fs
       JOIN meals m ON m.id = fs.meal_id
       WHERE fs.household_id = $1
@@ -57,6 +58,7 @@ router.get("/weeklySelections", authenticate, async (req: AuthRequest, res: Resp
       ...toMeal(row),
       foodSelectionId: row.food_selection_id,
       selectionStatus: row.selection_status,
+      servingSizeMultiplier: Number(row.serving_size_multiplier),
       score: 0,
     }));
 
@@ -111,6 +113,23 @@ router.post("/generateIngredients", authenticate, async (req: AuthRequest, res: 
   }
 
   try {
+    // Save multipliers and build mealId -> multiplier map
+    const mealMultipliers: Record<number, number> = {};
+    if (multipliers && typeof multipliers === "object") {
+      for (const [foodSelectionId, multiplier] of Object.entries(multipliers)) {
+        const updateResult = await pool.query(
+          `UPDATE food_selections
+           SET serving_size_multiplier = $1, updated_at = NOW()
+           WHERE id = $2 AND household_id = $3
+           RETURNING meal_id`,
+          [multiplier, Number(foodSelectionId), householdId]
+        );
+        if (updateResult.rows.length > 0) {
+          mealMultipliers[updateResult.rows[0].meal_id] = multiplier as number;
+        }
+      }
+    }
+
     const result = await pool.query(
       `SELECT i.*, m.name AS meal_name
        FROM ingredients i
@@ -127,7 +146,7 @@ router.post("/generateIngredients", authenticate, async (req: AuthRequest, res: 
     const directAggregated: Record<string, AggregatedIngredient> = {};
 
     for (const row of result.rows) {
-      const multiplier = multipliers?.[row.meal_id] || 1;
+      const multiplier = mealMultipliers[row.meal_id] || 1;
       const quantity = Number(row.quantity) * multiplier;
       const unitInfo = UNIT_TO_GROUP[row.measurement_unit];
 
@@ -179,7 +198,7 @@ router.get("/mealHistory", authenticate, async (req: AuthRequest, res: Response)
   try {
     const result = await pool.query(`
       SELECT m.*, fs.id AS food_selection_id, fs.status AS selection_status,
-             fs.chosen_at,
+             fs.chosen_at, fs.serving_size_multiplier,
              DATE_TRUNC('week', fs.chosen_at) AS week_start
       FROM food_selections fs
       JOIN meals m ON m.id = fs.meal_id
@@ -199,6 +218,7 @@ router.get("/mealHistory", authenticate, async (req: AuthRequest, res: Response)
         ...toMeal(row),
         foodSelectionId: row.food_selection_id,
         selectionStatus: row.selection_status,
+        servingSizeMultiplier: Number(row.serving_size_multiplier),
         score: 0,
       });
     }

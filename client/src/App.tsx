@@ -53,6 +53,7 @@ function HomePage({ onLogout }: { onLogout: () => void }) {
   const [showIncludeAll, setShowIncludeAll] = useState(false);
   const [ingredients, setIngredients] = useState<AggregatedIngredient[] | null>(null);
   const [generatingIngredients, setGeneratingIngredients] = useState(false);
+  const [multipliers, setMultipliers] = useState<Record<number, number>>({});
 
   useEffect(() => {
     const loadSelections = async () => {
@@ -61,6 +62,13 @@ function HomePage({ onLogout }: { onLogout: () => void }) {
         const data = await res.json();
         if (res.ok && data.meals.length > 0) {
           setMeals(data.meals);
+          const mults: Record<number, number> = {};
+          for (const m of data.meals) {
+            if (m.servingSizeMultiplier !== 1) {
+              mults[m.foodSelectionId] = m.servingSizeMultiplier;
+            }
+          }
+          if (Object.keys(mults).length > 0) setMultipliers(mults);
         }
       } catch {}
     };
@@ -133,7 +141,7 @@ function HomePage({ onLogout }: { onLogout: () => void }) {
       const mealIds = meals.map((m) => m.id);
       const res = await apiFetch("/api/v1/generateIngredients", {
         method: "POST",
-        body: JSON.stringify({ mealIds }),
+        body: JSON.stringify({ mealIds, multipliers }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -229,7 +237,9 @@ function HomePage({ onLogout }: { onLogout: () => void }) {
             <MealCard
               key={meal.foodSelectionId}
               meal={meal}
+              multiplier={multipliers[meal.foodSelectionId] || 1}
               onReject={(id) => rejectMeals([id])}
+              onMultiplierChange={(fsId, m) => { setMultipliers((prev) => ({ ...prev, [fsId]: m })); setIngredients(null); }}
             />
           ))}
 
