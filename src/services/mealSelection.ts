@@ -16,6 +16,19 @@ export async function chooseWeeklyMeals(
   count = DEFAULT_MEAL_COUNT,
   includeAll = false
 ): Promise<MealSelection[]> {
+  // Check how many non-rejected meals already exist this week
+  const existingResult = await pool.query(
+    `SELECT COUNT(*) FROM food_selections
+     WHERE household_id = $1 AND meal_id IS NOT NULL
+       AND chosen_at >= DATE_TRUNC('week', CURRENT_DATE)
+       AND status != 'rejected'`,
+    [householdId]
+  );
+  const existingCount = Number(existingResult.rows[0].count);
+  const needed = Math.max(0, count - existingCount);
+
+  if (needed === 0) return [];
+
   const excludeCurrentQuery = `
     SELECT fs.meal_id
     FROM food_selections fs
@@ -86,7 +99,7 @@ export async function chooseWeeklyMeals(
     })
     .sort((a, b) => b.score - a.score);
 
-  const chosen = ranked.slice(0, count);
+  const chosen = ranked.slice(0, needed);
 
   const insertedSelections: MealSelection[] = [];
   for (const meal of chosen) {

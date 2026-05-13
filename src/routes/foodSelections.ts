@@ -1,8 +1,9 @@
 import { Router, Response } from "express";
 import pool from "../db";
-import { MealSelection, AggregatedIngredient, ChooseWeeklyMealsResponse, RejectFoodSelectionsResponse } from "../types";
+import { MealSelection, StapleSelection, AggregatedIngredient, ChooseWeeklyMealsResponse, RejectFoodSelectionsResponse } from "../types";
 import { toMeal, toFoodSelection } from "../mappers";
 import { authenticate, AuthRequest } from "../middleware/auth";
+import { chooseWeeklyStaples } from "../services/stapleSelection";
 
 const router = Router();
 
@@ -97,6 +98,130 @@ router.post("/rejectFoodSelections", authenticate, async (req: AuthRequest, res:
     const message = err instanceof Error ? err.message : "Unknown error";
     console.error("Error rejecting food items:", err);
     res.status(500).json({ error: "Failed to reject food items", details: message });
+  }
+});
+
+// GET /api/v1/allStaples
+// Returns all food_staples for the household
+router.get("/allStaples", authenticate, async (req: AuthRequest, res: Response) => {
+  const householdId = req.user!.householdId;
+  try {
+    const result = await pool.query(
+      "SELECT id, name, description, notes FROM food_staples WHERE household_id = $1 ORDER BY name ASC",
+      [householdId]
+    );
+    res.json({ staples: result.rows });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    console.error("Error fetching staples:", err);
+    res.status(500).json({ error: "Failed to fetch staples", details: message });
+  }
+});
+
+// POST /api/v1/addWeeklyStaple
+// Body: { foodStapleId: number }
+// Adds a single staple to this week's food_selections
+router.post("/addWeeklyStaple", authenticate, async (req: AuthRequest, res: Response) => {
+  const householdId = req.user!.householdId;
+  const { foodStapleId } = req.body;
+
+  if (!foodStapleId) {
+    res.status(400).json({ error: "foodStapleId is required" });
+    return;
+  }
+
+  try {
+    // Check if already exists this week (including rejected — re-propose it)
+    const existing = await pool.query(
+      `SELECT id, status FROM food_selections
+       WHERE food_staple_id = $1 AND household_id = $2
+         AND chosen_at >= DATE_TRUNC('week', CURRENT_DATE)`,
+      [foodStapleId, householdId]
+    );
+
+    let foodSelectionId: number;
+    if (existing.rows.length > 0) {
+      // Re-propose if rejected
+      await pool.query(
+        `UPDATE food_selections SET status = 'proposed', updated_at = NOW() WHERE id = $1`,
+        [existing.rows[0].id]
+      );
+      foodSelectionId = existing.rows[0].id;
+    } else {
+      const insertResult = await pool.query(
+        `INSERT INTO food_selections (food_staple_id, household_id, status)
+         VALUES ($1, $2, 'proposed')
+         ON CONFLICT DO NOTHING
+         RETURNING id`,
+        [foodStapleId, householdId]
+      );
+      foodSelectionId = insertResult.rows[0]?.id;
+    }
+
+    const stapleData = await pool.query(
+      "SELECT id, name, description, notes FROM food_staples WHERE id = $1",
+      [foodStapleId]
+    );
+
+    const staple: StapleSelection = {
+      ...stapleData.rows[0],
+      foodSelectionId,
+      selectionStatus: "proposed",
+    };
+
+    res.json({ staple });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    console.error("Error adding staple:", err);
+    res.status(500).json({ error: "Failed to add staple", details: message });
+  }
+});
+
+// POST /api/v1/chooseWeeklyStaples
+// Adds all food_staples for the household into food_selections for this week
+router.post("/chooseWeeklyStaples", authenticate, async (req: AuthRequest, res: Response) => {
+  const householdId = req.user!.householdId;
+  try {
+    const { restore } = req.body || {};
+    const staples = await chooseWeeklyStaples(householdId, restore === true);
+    res.json({ staples });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    console.error("Error choosing weekly staples:", err);
+    res.status(500).json({ error: "Failed to choose weekly staples", details: message });
+  }
+});
+
+// GET /api/v1/weeklyStaples
+// Returns this week's non-rejected staple selections
+router.get("/weeklyStaples", authenticate, async (req: AuthRequest, res: Response) => {
+  const householdId = req.user!.householdId;
+  try {
+    const result = await pool.query(`
+      SELECT s.id, s.name, s.description, s.notes,
+             fs.id AS food_selection_id, fs.status AS selection_status
+      FROM food_selections fs
+      JOIN food_staples s ON s.id = fs.food_staple_id
+      WHERE fs.household_id = $1
+        AND fs.chosen_at >= DATE_TRUNC('week', CURRENT_DATE)
+        AND fs.status != 'rejected'
+      ORDER BY s.name ASC
+    `, [householdId]);
+
+    const staples: StapleSelection[] = result.rows.map((row) => ({
+      id: row.id,
+      name: row.name,
+      description: row.description,
+      notes: row.notes,
+      foodSelectionId: row.food_selection_id,
+      selectionStatus: row.selection_status,
+    }));
+
+    res.json({ staples });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    console.error("Error fetching weekly staples:", err);
+    res.status(500).json({ error: "Failed to fetch weekly staples", details: message });
   }
 });
 

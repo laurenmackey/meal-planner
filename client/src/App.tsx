@@ -6,6 +6,7 @@ import AuthPage from "./components/AuthPage";
 import AddRecipePage from "./components/AddRecipePage";
 import MealHistoryPage from "./components/MealHistoryPage";
 import AppHeader from "./components/AppHeader";
+import WeeklyStaples from "./components/WeeklyStaples";
 import { apiFetch } from "./api";
 import "./App.css";
 
@@ -279,8 +280,10 @@ function HomePage({ onLogout }: { onLogout: () => void }) {
                       <option key={u} value={u}>{u}</option>
                     ))}
                   </select>
-                  <span className="ingredient-name">{ing.name}{ing.optional && <span className="optional-tag"> (optional)</span>}</span>
-                  <span className="ingredient-sources">({ing.sources.join(", ")})</span>
+                  <div className="ingredient-detail">
+                    <span className="ingredient-name">{ing.name}{ing.optional && <span className="optional-tag"> (optional)</span>}</span>
+                    <span className="ingredient-sources"> ({ing.sources.join(", ")})</span>
+                  </div>
                   <button className="remove-ingredient" onClick={() => removeIngredient(i)}>x</button>
                 </div>
               ))}
@@ -288,6 +291,7 @@ function HomePage({ onLogout }: { onLogout: () => void }) {
           )}
         </div>
       )}
+      <WeeklyStaples onError={setError} />
     </div>
   );
 }

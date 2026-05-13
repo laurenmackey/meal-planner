@@ -2,7 +2,9 @@ import cron from "node-cron";
 import { Resend } from "resend";
 import pool from "../db";
 import { chooseWeeklyMeals, DEFAULT_MEAL_COUNT } from "../services/mealSelection";
+import { chooseWeeklyStaples } from "../services/stapleSelection";
 import { MealSelection } from "../types";
+import { toMeal } from "../mappers";
 
 const APP_URL = process.env.APP_URL || "http://localhost:3000";
 const EMAIL_FROM = process.env.EMAIL_FROM || "Meal Planner <onboarding@resend.dev>";
@@ -31,10 +33,9 @@ function buildEmailHtml(meals: MealSelection[]): string {
           ${meal.description ? `<br><span style="color: #666; font-size: 14px;">${meal.description}</span>` : ""}
           <br>
           <span style="color: #888; font-size: 13px;">
-            ${meal.mainProtein && meal.mainProtein !== "none" ? meal.mainProtein + " · " : ""}
-            ${meal.prepTimeMinutes ? meal.prepTimeMinutes + " min prep · " : ""}
-            ${meal.cookTimeMinutes ? meal.cookTimeMinutes + " min cook · " : ""}
-            Serves ${meal.servingSize}
+            ${meal.prepTimeMinutes ? meal.prepTimeMinutes + " min prep" : ""}
+            ${meal.prepTimeMinutes && meal.cookTimeMinutes ? " · " : ""}
+            ${meal.cookTimeMinutes ? meal.cookTimeMinutes + " min cook" : ""}
           </span>
           ${meal.url ? `<br><a href="${meal.url}" style="color: #2d6a4f; font-size: 13px;">View recipe</a>` : ""}
         </td>
@@ -74,7 +75,28 @@ async function runWeeklyMealJob() {
 
     for (const household of households.rows) {
       const householdId = household.id;
-      const meals = await chooseWeeklyMeals(householdId, DEFAULT_MEAL_COUNT);
+
+      await chooseWeeklyMeals(householdId, DEFAULT_MEAL_COUNT);
+      await chooseWeeklyStaples(householdId);
+
+      // Fetch all this week's meals for the email (don't show staples in email)
+      const allMealsResult = await pool.query(
+        `SELECT m.*, fs.id AS food_selection_id, fs.status AS selection_status
+         FROM food_selections fs
+         JOIN meals m ON m.id = fs.meal_id
+         WHERE fs.household_id = $1
+           AND fs.chosen_at >= DATE_TRUNC('week', CURRENT_DATE)
+           AND fs.status != 'rejected'`,
+        [householdId]
+      );
+      const meals: MealSelection[] = allMealsResult.rows.map((row) => ({
+        ...toMeal(row),
+        foodSelectionId: row.food_selection_id,
+        selectionStatus: row.selection_status,
+        servingSizeMultiplier: 1,
+        score: 0,
+      }));
+
       const emails = await getHouseholdEmails(householdId);
 
       if (emails.length === 0) continue;

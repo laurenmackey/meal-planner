@@ -73,6 +73,18 @@ export interface RejectFoodSelectionsResponse {
 export const MEASUREMENT_UNITS = ['cups', 'tbsp', 'tsp', 'oz', 'lb', 'g', 'ml', 'l', 'whole', 'cloves', 'pinch', 'to_taste'] as const;
 export type MeasurementUnit = typeof MEASUREMENT_UNITS[number];
 
+export interface FoodStaple {
+  id: number;
+  name: string;
+  description: string | null;
+  notes: string | null;
+}
+
+export interface StapleSelection extends FoodStaple {
+  foodSelectionId: number;
+  selectionStatus: SelectionStatus;
+}
+
 export interface ParsedIngredient {
   name: string;
   quantity: number;
