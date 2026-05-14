@@ -2,7 +2,12 @@ import React, { useEffect, useState } from "react";
 import { StapleSelection, FoodStaple } from "../../../src/types";
 import { apiFetch } from "../api";
 
-export default function WeeklyStaples({ onError }: { onError: (msg: string) => void }) {
+interface WeeklyStaplesProps {
+  onError: (msg: string) => void;
+  onStaplesChange: (staples: StapleSelection[]) => void;
+}
+
+export default function WeeklyStaples({ onError, onStaplesChange }: WeeklyStaplesProps) {
   const [staples, setStaples] = useState<StapleSelection[]>([]);
   const [totalStapleCount, setTotalStapleCount] = useState(0);
   const [allStaples, setAllStaples] = useState<FoodStaple[]>([]);
@@ -26,6 +31,10 @@ export default function WeeklyStaples({ onError }: { onError: (msg: string) => v
     };
     load();
   }, []);
+
+  useEffect(() => {
+    onStaplesChange(staples);
+  }, [staples]);
 
   const rejectStaple = async (foodSelectionId: number) => {
     try {

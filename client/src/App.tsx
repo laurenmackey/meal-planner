@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Routes, Route } from "react-router-dom";
-import { MealSelection, AggregatedIngredient, MEASUREMENT_UNITS } from "../../src/types";
+import { MealSelection, StapleSelection, AggregatedIngredient, MEASUREMENT_UNITS } from "../../src/types";
 import MealCard from "./components/MealCard";
 import AuthPage from "./components/AuthPage";
 import AddRecipePage from "./components/AddRecipePage";
@@ -157,6 +157,29 @@ function HomePage({ onLogout }: { onLogout: () => void }) {
     }
   };
 
+  const [copied, setCopied] = useState(false);
+  const [currentStaples, setCurrentStaples] = useState<StapleSelection[]>([]);
+
+  const copyListToClipboard = async () => {
+    const lines: string[] = [];
+
+    if (ingredients && ingredients.length > 0) {
+      for (const ing of ingredients) {
+        const unit = ing.measurementUnit === "whole" ? "" : ` ${ing.measurementUnit}`;
+        const optional = ing.optional ? " (optional)" : "";
+        lines.push(`${ing.quantity}${unit} ${ing.name}${optional}`);
+      }
+    }
+
+    for (const s of currentStaples) {
+      lines.push(s.name);
+    }
+
+    await navigator.clipboard.writeText(lines.join("\n"));
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   const removeIngredient = (index: number) => {
     setIngredients((prev) => prev ? prev.filter((_, i) => i !== index) : null);
   };
@@ -244,13 +267,23 @@ function HomePage({ onLogout }: { onLogout: () => void }) {
             />
           ))}
 
-          <button
-            className="generate-button ingredients-button"
-            onClick={generateIngredients}
-            disabled={generatingIngredients || ingredients !== null}
-          >
-            {generatingIngredients ? "Generating..." : "Generate Ingredients"}
-          </button>
+          <div className="ingredients-buttons">
+            <button
+              className="generate-button ingredients-button"
+              onClick={generateIngredients}
+              disabled={generatingIngredients || ingredients !== null}
+            >
+              {generatingIngredients ? "Generating..." : "Generate Ingredients"}
+            </button>
+            {ingredients && (
+              <button
+                className="generate-button copy-list-button"
+                onClick={copyListToClipboard}
+              >
+                {copied ? "Copied!" : "Copy List to Clipboard"}
+              </button>
+            )}
+          </div>
         </div>
       )}
 
@@ -291,7 +324,7 @@ function HomePage({ onLogout }: { onLogout: () => void }) {
           )}
         </div>
       )}
-      <WeeklyStaples onError={setError} />
+      <WeeklyStaples onError={setError} onStaplesChange={setCurrentStaples} />
     </div>
   );
 }

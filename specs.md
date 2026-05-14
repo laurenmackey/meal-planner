@@ -94,8 +94,6 @@ I'd like to build a meal planner app to help automate the work of:
 
 - To integrate staples, we can assume that everything in the staples table would need to be added to the grocery list weekly. Update the cron job to call a new API, chooseWeeklyStaples that adds everything from that table to the food_selections table for this week, and then displays it in the UI in a separate section from the meals, but with the same UI to allow editing the quantity or removing a staple from the list. Removing a staple from the weekly list uses the rejectFoodItem API.
 
-- Add CRUD APIs and a simple UI for managing the master food_staples table (adding new staples, editing, or permanently removing ones you no longer buy weekly).
-
 - There should be a new button for Send Ingredients to List. This implementation is TBD. We currently use Google Keep for our grocery list, not sure if it's feasible to build an API that updates our Google Keep list or if we should use something else for our list. Ideally it would add to an existing list and not overwrite anything already there. It would send all the staples and all the ingredients for the meals, including any adjustments made to quantity, measurement unit, etc. to the list. Ideally we could group the ingredients by store section as well.
 
 ### Milestone 6 - Google Calendar Integration
@@ -103,7 +101,14 @@ I'd like to build a meal planner app to help automate the work of:
 
 ### Milestone 7 - More to the UI
 - View all recipes by category, with a caret to view ingredients. Allow editing of fields here too.
+
 - Adjust family settings page (average difficulty, how many fish per week, etc), then algorithm takes these into account
+
+- Make sure email linking to view recipe works correctly (should click out to site). Is it worth parsing and storing recipe on our end?
+
+- Make sure UI shows anything that would be useful for app, such as notes for an ingredient (and saves that to list) or notes for a recipe
+
+- Add CRUD APIs and a simple UI for managing the master food_staples table (adding new staples, editing, or permanently removing ones you no longer buy weekly). Do the same for the meals and ingredients. You should be able to add staples to the db from the search bar on the main page
 
 ### Milestone 8 - Recipes and Ingredients from Recipe Pictures and Other Sources
 - Can we integrate with claude agent to do this for us?
@@ -114,10 +119,14 @@ I'd like to build a meal planner app to help automate the work of:
 ### Milestone 10 - Save from chatgpt
 - Can we ask chatgpt to save the recipe it just generated to our db so we can use it going forward?
 
-### Milestone 11 - Resend custom domain
+### Milestone 11 - Resend custom domain and email cleanup
 - Set up custom domain on Resend so the weekly email will send to Spencer along with me
 - Remove logic related to RESEND_ALLOWED_EMAILS
+- Make sure email flow makes sense - Do you then still have to manually generate the ingredients or can you just do it automatically from email once meals are accepted?
 
 ### Milestone 12 - Agentic Interactions
 - TBD - would this be useful?
 - Instead of clicking buttons in the UI to regenerate/edit quantities/etc, can we have more of a text-based interaction with an agent interface to adjust the meals?
+
+### Milestone 13 - Tests
+- Add core unit and integration tests
