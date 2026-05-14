@@ -1,9 +1,12 @@
-import React, { useEffect, useRef, useState } from "react";
-import { Routes, Route, useNavigate } from "react-router-dom";
-import { MealSelection } from "../../src/types";
+import React, { useEffect, useState } from "react";
+import { Routes, Route } from "react-router-dom";
+import { MealSelection, StapleSelection, AggregatedIngredient, MEASUREMENT_UNITS } from "../../src/types";
 import MealCard from "./components/MealCard";
 import AuthPage from "./components/AuthPage";
 import AddRecipePage from "./components/AddRecipePage";
+import MealHistoryPage from "./components/MealHistoryPage";
+import AppHeader from "./components/AppHeader";
+import WeeklyStaples from "./components/WeeklyStaples";
 import { apiFetch } from "./api";
 import "./App.css";
 
@@ -30,20 +33,18 @@ export default function App() {
     return <AuthPage onAuth={() => setAuthed(true)} />;
   }
 
+  const handleLogout = () => setAuthed(false);
+
   return (
     <Routes>
-      <Route path="/" element={<HomePage onLogout={() => setAuthed(false)} />} />
-      <Route path="/add-recipe" element={<AddRecipePage />} />
+      <Route path="/" element={<HomePage onLogout={handleLogout} />} />
+      <Route path="/add-recipe" element={<AddRecipePage onLogout={handleLogout} />} />
+      <Route path="/history" element={<MealHistoryPage onLogout={handleLogout} />} />
     </Routes>
   );
 }
 
 function HomePage({ onLogout }: { onLogout: () => void }) {
-  const navigate = useNavigate();
-  const [inviteCode, setInviteCode] = useState<string | null>(null);
-  const [showInviteCode, setShowInviteCode] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
   const [countInput, setCountInput] = useState(String(DEFAULT_COUNT));
   const count = countInput === "" ? 0 : Number(countInput);
   const [meals, setMeals] = useState<MealSelection[]>([]);
@@ -51,41 +52,29 @@ function HomePage({ onLogout }: { onLogout: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [showIncludeAll, setShowIncludeAll] = useState(false);
+  const [ingredients, setIngredients] = useState<AggregatedIngredient[] | null>(null);
+  const [generatingIngredients, setGeneratingIngredients] = useState(false);
+  const [multipliers, setMultipliers] = useState<Record<number, number>>({});
 
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setMenuOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        const meRes = await apiFetch("/api/v1/me");
-        if (meRes.ok) {
-          const data = await meRes.json();
-          setInviteCode(data.household.inviteCode);
-        }
-      } catch {}
+    const loadSelections = async () => {
       try {
         const res = await apiFetch("/api/v1/weeklySelections");
         const data = await res.json();
         if (res.ok && data.meals.length > 0) {
           setMeals(data.meals);
+          const mults: Record<number, number> = {};
+          for (const m of data.meals) {
+            if (m.servingSizeMultiplier !== 1) {
+              mults[m.foodSelectionId] = m.servingSizeMultiplier;
+            }
+          }
+          if (Object.keys(mults).length > 0) setMultipliers(mults);
         }
       } catch {}
     };
-    loadData();
+    loadSelections();
   }, []);
-
-  const handleLogout = async () => {
-    await apiFetch("/api/v1/logout", { method: "POST" });
-    onLogout(); // unmounts HomePage, so no need to clear local state
-  };
 
   const generateMeals = async (includeAll = false) => {
     setLoading(true);
@@ -146,34 +135,64 @@ function HomePage({ onLogout }: { onLogout: () => void }) {
     }
   };
 
+  const generateIngredients = async () => {
+    setGeneratingIngredients(true);
+    setError(null);
+    try {
+      const mealIds = meals.map((m) => m.id);
+      const res = await apiFetch("/api/v1/generateIngredients", {
+        method: "POST",
+        body: JSON.stringify({ mealIds, multipliers }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Failed to generate ingredients");
+        return;
+      }
+      setIngredients(data.ingredients);
+    } catch {
+      setError("Failed to connect to server");
+    } finally {
+      setGeneratingIngredients(false);
+    }
+  };
+
+  const [copied, setCopied] = useState(false);
+  const [currentStaples, setCurrentStaples] = useState<StapleSelection[]>([]);
+
+  const copyListToClipboard = async () => {
+    const lines: string[] = [];
+
+    if (ingredients && ingredients.length > 0) {
+      for (const ing of ingredients) {
+        const unit = ing.measurementUnit === "whole" ? "" : ` ${ing.measurementUnit}`;
+        const optional = ing.optional ? " (optional)" : "";
+        lines.push(`${ing.quantity}${unit} ${ing.name}${optional}`);
+      }
+    }
+
+    for (const s of currentStaples) {
+      lines.push(s.name);
+    }
+
+    await navigator.clipboard.writeText(lines.join("\n"));
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const removeIngredient = (index: number) => {
+    setIngredients((prev) => prev ? prev.filter((_, i) => i !== index) : null);
+  };
+
+  const updateIngredient = (index: number, updates: Partial<AggregatedIngredient>) => {
+    setIngredients((prev) =>
+      prev ? prev.map((ing, i) => (i === index ? { ...ing, ...updates } : ing)) : null
+    );
+  };
+
   return (
     <div className="app">
-      <div className="app-header">
-        <h1 className="title">🍽️ Meal Planner</h1>
-        <div className="menu-wrapper" ref={menuRef}>
-          <button className="menu-button" onClick={() => setMenuOpen(!menuOpen)}>
-            <span className="menu-icon" />
-            <span className="menu-icon" />
-            <span className="menu-icon" />
-          </button>
-          {menuOpen && (
-            <div className="menu-dropdown">
-              <button onClick={() => { navigate("/add-recipe"); setMenuOpen(false); }}>Add Recipe</button>
-              <button onClick={() => { setShowInviteCode(!showInviteCode); setMenuOpen(false); }}>
-                {showInviteCode ? "Hide Invite Code" : "Show Invite Code"}
-              </button>
-              <button onClick={handleLogout}>Log Out</button>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {showInviteCode && inviteCode && (
-        <div className="invite-code-banner">
-          <span>Share this code with your household: <strong>{inviteCode}</strong></span>
-          <button className="invite-close" onClick={() => setShowInviteCode(false)}>x</button>
-        </div>
-      )}
+      <AppHeader title="🍽️ Meal Planner" onLogout={onLogout} />
 
       <div className="controls">
         <label htmlFor="count">Number of meals:</label>
@@ -229,7 +248,7 @@ function HomePage({ onLogout }: { onLogout: () => void }) {
       {meals.length > 0 && (
         <div>
           <div className="meals-header">
-            <h2>Suggested Meals</h2>
+            <h2>This Week's Meals</h2>
             <button
               className="reject-button"
               onClick={() => rejectMeals(meals.map((m) => m.foodSelectionId))}
@@ -242,11 +261,70 @@ function HomePage({ onLogout }: { onLogout: () => void }) {
             <MealCard
               key={meal.foodSelectionId}
               meal={meal}
+              multiplier={multipliers[meal.foodSelectionId] || 1}
               onReject={(id) => rejectMeals([id])}
+              onMultiplierChange={(fsId, m) => { setMultipliers((prev) => ({ ...prev, [fsId]: m })); setIngredients(null); }}
             />
           ))}
+
+          <div className="ingredients-buttons">
+            <button
+              className="generate-button ingredients-button"
+              onClick={generateIngredients}
+              disabled={generatingIngredients || ingredients !== null}
+            >
+              {generatingIngredients ? "Generating..." : "Generate Ingredients"}
+            </button>
+            {ingredients && (
+              <button
+                className="generate-button copy-list-button"
+                onClick={copyListToClipboard}
+              >
+                {copied ? "Copied!" : "Copy List to Clipboard"}
+              </button>
+            )}
+          </div>
         </div>
       )}
+
+      {ingredients && (
+        <div className="ingredients-section">
+          <h2 className="ingredients-heading">Ingredients</h2>
+          {ingredients.length === 0 ? (
+            <p className="empty-state">No ingredients found for the selected meals.</p>
+          ) : (
+            <div className="ingredient-edit-list">
+              {ingredients.map((ing, i) => (
+                <div key={i} className="ingredient-edit-row">
+                  <input
+                    className="edit-input-sm"
+                    type="number"
+                    step="any"
+                    min="0"
+                    defaultValue={ing.quantity}
+                    onBlur={(e) => updateIngredient(i, { quantity: Number(e.target.value) || 0 })}
+                  />
+                  <select
+                    className="edit-select"
+                    value={ing.measurementUnit}
+                    onChange={(e) => updateIngredient(i, { measurementUnit: e.target.value as AggregatedIngredient["measurementUnit"] })}
+                  >
+                    {MEASUREMENT_UNITS.map((u) => (
+                      <option key={u} value={u}>{u}</option>
+                    ))}
+                  </select>
+                  <div className="ingredient-detail">
+                    <span className="ingredient-name">{ing.name}{ing.optional && <span className="optional-tag"> (optional)</span>}</span>
+                    <span className="ingredient-sources"> ({ing.sources.join(", ")})</span>
+                  </div>
+                  <button className="remove-ingredient" onClick={() => removeIngredient(i)}>x</button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+      <WeeklyStaples onError={setError} onStaplesChange={setCurrentStaples} />
     </div>
   );
 }

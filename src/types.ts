@@ -1,6 +1,6 @@
 export const PROTEINS = ['chicken', 'beef', 'pork', 'turkey', 'lamb', 'fish', 'shrimp', 'prawns', 'crab', 'tofu', 'none', 'other'] as const;
 export type Protein = typeof PROTEINS[number];
-export type SelectionStatus = 'proposed' | 'rejected' | 'accepted';
+export type SelectionStatus = 'proposed' | 'rejected';
 
 export interface Meal {
   id: number;
@@ -20,9 +20,13 @@ export interface Meal {
   servingSize: number;
 }
 
+export const SERVING_MULTIPLIERS = [1, 1.5, 2, 3] as const;
+export type ServingMultiplier = typeof SERVING_MULTIPLIERS[number];
+
 export interface MealSelection extends Meal {
   foodSelectionId: number;
   selectionStatus: SelectionStatus;
+  servingSizeMultiplier: number;
   score: number;
 }
 
@@ -69,12 +73,32 @@ export interface RejectFoodSelectionsResponse {
 export const MEASUREMENT_UNITS = ['cups', 'tbsp', 'tsp', 'oz', 'lb', 'g', 'ml', 'l', 'whole', 'cloves', 'pinch', 'to_taste'] as const;
 export type MeasurementUnit = typeof MEASUREMENT_UNITS[number];
 
+export interface FoodStaple {
+  id: number;
+  name: string;
+  description: string | null;
+  notes: string | null;
+}
+
+export interface StapleSelection extends FoodStaple {
+  foodSelectionId: number;
+  selectionStatus: SelectionStatus;
+}
+
 export interface ParsedIngredient {
   name: string;
   quantity: number;
   measurementUnit: MeasurementUnit;
   optional: boolean;
   notes: string | null;
+}
+
+export interface AggregatedIngredient {
+  name: string;
+  quantity: number;
+  measurementUnit: MeasurementUnit;
+  sources: string[];
+  optional: boolean;
 }
 
 export interface ParsedRecipe {

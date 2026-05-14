@@ -2,8 +2,9 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ParsedRecipe, ParsedIngredient, PROTEINS, MEASUREMENT_UNITS } from "../../../src/types";
 import { apiFetch } from "../api";
+import AppHeader from "./AppHeader";
 
-export default function AddRecipePage() {
+export default function AddRecipePage({ onLogout }: { onLogout: () => void }) {
   const navigate = useNavigate();
   const [url, setUrl] = useState("");
   const [parsing, setParsing] = useState(false);
@@ -116,12 +117,7 @@ export default function AddRecipePage() {
 
   return (
     <div className="app">
-      <div className="app-header">
-        <h1 className="title">Add Recipe</h1>
-        <button className="back-button" onClick={() => navigate("/")}>
-          Back
-        </button>
-      </div>
+      <AppHeader title="Add Recipe" onLogout={onLogout} />
 
       <form className="parse-form" onSubmit={handleParse}>
         <input
