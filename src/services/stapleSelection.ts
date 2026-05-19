@@ -24,7 +24,7 @@ export async function chooseWeeklyStaples(householdId: number, restore = false):
        SET status = 'proposed', updated_at = NOW()
        WHERE household_id = $1
          AND food_staple_id IS NOT NULL
-         AND chosen_at >= DATE_TRUNC('week', CURRENT_DATE)
+         AND week_start_utc(chosen_at) = week_start_utc(NOW())
          AND status = 'rejected'`,
       [householdId]
     );
@@ -37,7 +37,7 @@ export async function chooseWeeklyStaples(householdId: number, restore = false):
     FROM food_selections fs
     JOIN food_staples s ON s.id = fs.food_staple_id
     WHERE fs.household_id = $1
-      AND fs.chosen_at >= DATE_TRUNC('week', CURRENT_DATE)
+      AND week_start_utc(fs.chosen_at) = week_start_utc(NOW())
       AND fs.status != 'rejected'
     ORDER BY s.name ASC
   `, [householdId]);

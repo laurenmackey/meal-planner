@@ -110,6 +110,8 @@ I'd like to build a meal planner app to help automate the work of:
 
 - Add CRUD APIs and a simple UI for managing the master food_staples table (adding new staples, editing, or permanently removing ones you no longer buy weekly). Do the same for the meals and ingredients. You should be able to add staples to the db from the search bar on the main page
 
+- Login: can you login with google oauth now that we have that set up for google calendar? Only worth adding if it's straightforward
+
 ### Milestone 8 - Recipes and Ingredients from Recipe Pictures and Other Sources
 - Can we integrate with claude agent to do this for us?
 - Can we run a weekly job to scrape NY Times Cooking and suggest new recipes we might like?
@@ -123,6 +125,12 @@ I'd like to build a meal planner app to help automate the work of:
 - Set up custom domain on Resend so the weekly email will send to Spencer along with me
 - Remove logic related to RESEND_ALLOWED_EMAILS
 - Make sure email flow makes sense - Do you then still have to manually generate the ingredients or can you just do it automatically from email once meals are accepted?
+- Debug why cron job didn't work (email didn't send on Friday at 5pm PT) - Weekly meal cron job failed: Error: Missing API key. Pass it to the constructor `new Resend("re_123")`
+    at new Resend (/app/node_modules/resend/dist/index.cjs:1087:25)
+    at getResend (/app/dist/cron/weeklyMeals.js:17:12)
+    at runWeeklyMealJob (/app/dist/cron/weeklyMeals.js:99:34)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async Timeout._onTimeout (/app/node_modules/node-cron/dist/cjs/scheduler/runner.js:70:44)
 
 ### Milestone 12 - Agentic Interactions
 - TBD - would this be useful?

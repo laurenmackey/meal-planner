@@ -726,6 +726,18 @@
   margin-top: 16px;
 }
 
+.copy-section {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid #eee;
+}
+
+.copy-hint {
+  color: #888;
+  font-size: 13px;
+  margin: 8px 0 0;
+}
+
 /* Staples section */
 .staples-section {
   margin-top: 32px;
@@ -811,6 +823,10 @@
   font-size: 14px;
 }
 
+.staple-row:last-child {
+  border-bottom: none;
+}
+
 .staple-name {
   font-weight: 500;
 }
@@ -829,4 +845,78 @@
   font-size: 14px;
   cursor: pointer;
   padding: 2px 8px;
+}
+
+/* Calendar section */
+.calendar-section {
+  margin-top: 32px;
+  padding-top: 16px;
+  border-top: 1px solid #eee;
+}
+
+.calendar-heading {
+  font-family: 'Libre Baskerville', serif;
+  color: #444;
+  margin: 0 0 16px;
+}
+
+.calendar-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 12px;
+}
+
+.calendar-disconnect {
+  padding: 4px 12px;
+  background: none;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 12px;
+  font-family: inherit;
+  color: #888;
+  cursor: pointer;
+}
+
+.calendar-schedule {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.calendar-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.calendar-meal-name {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 500;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.calendar-date-input,
+.calendar-time-input {
+  padding: 6px 8px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: inherit;
+}
+
+.calendar-added {
+  color: #0f5132;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.calendar-edit-link {
+  color: #2d6a4f;
+  font-size: 13px;
+  text-decoration: none;
 }
