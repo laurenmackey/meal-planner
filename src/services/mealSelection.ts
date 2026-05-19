@@ -20,7 +20,7 @@ export async function chooseWeeklyMeals(
   const existingResult = await pool.query(
     `SELECT COUNT(*) FROM food_selections
      WHERE household_id = $1 AND meal_id IS NOT NULL
-       AND chosen_at >= DATE_TRUNC('week', CURRENT_DATE)
+       AND week_start_utc(chosen_at) = week_start_utc(NOW())
        AND status != 'rejected'`,
     [householdId]
   );
@@ -34,7 +34,7 @@ export async function chooseWeeklyMeals(
     FROM food_selections fs
     WHERE fs.meal_id IS NOT NULL
       AND fs.household_id = $1
-      AND fs.chosen_at >= DATE_TRUNC('week', CURRENT_DATE)
+      AND week_start_utc(fs.chosen_at) = week_start_utc(NOW())
       AND fs.status != 'rejected'
   `;
   const eligibleMealsResult = includeAll
@@ -69,7 +69,7 @@ export async function chooseWeeklyMeals(
      FROM food_selections fs
      JOIN meals m ON m.id = fs.meal_id
      WHERE fs.household_id = $1
-       AND fs.chosen_at >= DATE_TRUNC('week', CURRENT_DATE)
+       AND week_start_utc(fs.chosen_at) = week_start_utc(NOW())
        AND fs.status != 'rejected'
        AND m.main_protein IS NOT NULL`,
     [householdId]

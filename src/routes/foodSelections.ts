@@ -51,7 +51,7 @@ router.get("/weeklySelections", authenticate, async (req: AuthRequest, res: Resp
       FROM food_selections fs
       JOIN meals m ON m.id = fs.meal_id
       WHERE fs.household_id = $1
-        AND fs.chosen_at >= DATE_TRUNC('week', CURRENT_DATE)
+        AND week_start_utc(fs.chosen_at) = week_start_utc(NOW())
         AND fs.status != 'rejected'
     `, [householdId]);
 
@@ -135,7 +135,7 @@ router.post("/addWeeklyStaple", authenticate, async (req: AuthRequest, res: Resp
     const existing = await pool.query(
       `SELECT id, status FROM food_selections
        WHERE food_staple_id = $1 AND household_id = $2
-         AND chosen_at >= DATE_TRUNC('week', CURRENT_DATE)`,
+         AND week_start_utc(chosen_at) = week_start_utc(NOW())`,
       [foodStapleId, householdId]
     );
 
@@ -203,7 +203,7 @@ router.get("/weeklyStaples", authenticate, async (req: AuthRequest, res: Respons
       FROM food_selections fs
       JOIN food_staples s ON s.id = fs.food_staple_id
       WHERE fs.household_id = $1
-        AND fs.chosen_at >= DATE_TRUNC('week', CURRENT_DATE)
+        AND week_start_utc(fs.chosen_at) = week_start_utc(NOW())
         AND fs.status != 'rejected'
       ORDER BY s.name ASC
     `, [householdId]);

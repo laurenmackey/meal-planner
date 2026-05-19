@@ -42,7 +42,8 @@ export default function AuthPage({ onAuth }: AuthPageProps) {
         return;
       }
 
-      onAuth();
+      // Full page reload clears 1Password's "save credentials" prompt
+      window.location.reload();
     } catch {
       setError("Failed to connect to server");
     } finally {

@@ -7,6 +7,7 @@ import AddRecipePage from "./components/AddRecipePage";
 import MealHistoryPage from "./components/MealHistoryPage";
 import AppHeader from "./components/AppHeader";
 import WeeklyStaples from "./components/WeeklyStaples";
+import GoogleCalendar from "./components/GoogleCalendar";
 import { apiFetch } from "./api";
 import "./App.css";
 
@@ -280,7 +281,7 @@ function HomePage({ onLogout }: { onLogout: () => void }) {
                 className="generate-button copy-list-button"
                 onClick={copyListToClipboard}
               >
-                {copied ? "Copied!" : "Copy List to Clipboard"}
+                {copied ? "Copied!" : currentStaples.length > 0 ? "Copy Grocery List (incl. staples)" : "Copy Grocery List"}
               </button>
             )}
           </div>
@@ -325,6 +326,9 @@ function HomePage({ onLogout }: { onLogout: () => void }) {
         </div>
       )}
       <WeeklyStaples onError={setError} onStaplesChange={setCurrentStaples} />
+      {meals.length > 0 && (
+        <GoogleCalendar meals={meals} onError={setError} />
+      )}
     </div>
   );
 }
