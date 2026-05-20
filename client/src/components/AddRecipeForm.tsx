@@ -1,11 +1,12 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { ParsedRecipe, ParsedIngredient, PROTEINS, MEASUREMENT_UNITS } from "../../../src/types";
 import { apiFetch } from "../api";
-import AppHeader from "./AppHeader";
 
-export default function AddRecipePage({ onLogout }: { onLogout: () => void }) {
-  const navigate = useNavigate();
+interface AddRecipeFormProps {
+  onSaved: () => void;
+}
+
+export default function AddRecipeForm({ onSaved }: AddRecipeFormProps) {
   const [url, setUrl] = useState("");
   const [parsing, setParsing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -16,7 +17,6 @@ export default function AddRecipePage({ onLogout }: { onLogout: () => void }) {
   const [healthScore, setHealthScore] = useState("5");
   const [notes, setNotes] = useState("");
   const [editing, setEditing] = useState(false);
-  const [saved, setSaved] = useState(false);
   const [showPasteFallback, setShowPasteFallback] = useState(false);
   const [pastedText, setPastedText] = useState("");
 
@@ -24,7 +24,6 @@ export default function AddRecipePage({ onLogout }: { onLogout: () => void }) {
     setParsing(true);
     setError(null);
     setRecipe(null);
-    setSaved(false);
     try {
       const res = await apiFetch("/api/v1/parseRecipe", {
         method: "POST",
@@ -98,7 +97,6 @@ export default function AddRecipePage({ onLogout }: { onLogout: () => void }) {
         setError(data.details || data.error || "Failed to save recipe");
         return;
       }
-      setSaved(true);
       setRecipe(null);
       setUrl("");
       setNotes("");
@@ -108,6 +106,7 @@ export default function AddRecipePage({ onLogout }: { onLogout: () => void }) {
       setEditing(false);
       setShowPasteFallback(false);
       setPastedText("");
+      onSaved();
     } catch {
       setError("Failed to connect to server");
     } finally {
@@ -116,9 +115,7 @@ export default function AddRecipePage({ onLogout }: { onLogout: () => void }) {
   };
 
   return (
-    <div className="app">
-      <AppHeader title="Add Recipe" onLogout={onLogout} />
-
+    <>
       <form className="parse-form" onSubmit={handleParse}>
         <input
           className="url-input"
@@ -159,7 +156,7 @@ export default function AddRecipePage({ onLogout }: { onLogout: () => void }) {
         </div>
       )}
 
-      {recipe && !saved && (
+      {recipe && (
         <div className="parsed-recipe">
           {!editing ? (
             <>
@@ -356,12 +353,6 @@ export default function AddRecipePage({ onLogout }: { onLogout: () => void }) {
           </div>
         </div>
       )}
-
-      {saved && (
-        <div className="save-success">
-          Recipe saved! <a href="#" onClick={(e) => { e.preventDefault(); navigate("/"); }}>Back to home</a>
-        </div>
-      )}
-    </div>
+    </>
   );
 }

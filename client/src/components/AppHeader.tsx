@@ -55,7 +55,7 @@ export default function AppHeader({ title, onLogout }: AppHeaderProps) {
           {menuOpen && (
             <div className="menu-dropdown">
               <button onClick={() => { navigate("/"); setMenuOpen(false); }}>Home</button>
-              <button onClick={() => { navigate("/add-recipe"); setMenuOpen(false); }}>Add Recipe</button>
+              <button onClick={() => { navigate("/recipes"); setMenuOpen(false); }}>Recipes</button>
               <button onClick={() => { navigate("/history"); setMenuOpen(false); }}>Meal History</button>
               <button onClick={() => { setShowInviteCode(!showInviteCode); setMenuOpen(false); }}>
                 {showInviteCode ? "Hide Invite Code" : "Show Invite Code"}

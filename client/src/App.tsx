@@ -3,8 +3,8 @@ import { Routes, Route } from "react-router-dom";
 import { MealSelection, StapleSelection, AggregatedIngredient, MEASUREMENT_UNITS } from "../../src/types";
 import MealCard from "./components/MealCard";
 import AuthPage from "./components/AuthPage";
-import AddRecipePage from "./components/AddRecipePage";
 import MealHistoryPage from "./components/MealHistoryPage";
+import RecipesPage from "./components/RecipesPage";
 import AppHeader from "./components/AppHeader";
 import WeeklyStaples from "./components/WeeklyStaples";
 import GoogleCalendar from "./components/GoogleCalendar";
@@ -39,7 +39,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/" element={<HomePage onLogout={handleLogout} />} />
-      <Route path="/add-recipe" element={<AddRecipePage onLogout={handleLogout} />} />
+      <Route path="/recipes" element={<RecipesPage onLogout={handleLogout} />} />
       <Route path="/history" element={<MealHistoryPage onLogout={handleLogout} />} />
     </Routes>
   );

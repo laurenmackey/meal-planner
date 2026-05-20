@@ -86,6 +86,7 @@ export interface StapleSelection extends FoodStaple {
 }
 
 export interface ParsedIngredient {
+  id?: number;
   name: string;
   quantity: number;
   measurementUnit: MeasurementUnit;

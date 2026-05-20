@@ -100,7 +100,7 @@ I'd like to build a meal planner app to help automate the work of:
 - Once recipes are accepted, create google calendar invites for them.
 
 ### Milestone 7 - More to the UI
-- View all recipes by category, with a caret to view ingredients. Allow editing of fields here too.
+- View all recipes by protein, with a caret to view ingredients. Allow editing of fields here too.
 
 - Adjust family settings page (average difficulty, how many fish per week, etc), then algorithm takes these into account
 
