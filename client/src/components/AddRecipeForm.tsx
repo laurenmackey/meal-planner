@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { ParsedRecipe, ParsedIngredient, PROTEINS, MEASUREMENT_UNITS } from "../../../src/types";
 import { apiFetch } from "../api";
+import styles from "./AddRecipeForm.module.css";
 
 interface AddRecipeFormProps {
   onSaved: () => void;
@@ -116,9 +117,9 @@ export default function AddRecipeForm({ onSaved }: AddRecipeFormProps) {
 
   return (
     <>
-      <form className="parse-form" onSubmit={handleParse}>
+      <form className={styles.parseForm} onSubmit={handleParse}>
         <input
-          className="url-input"
+          className={styles.urlInput}
           type="url"
           placeholder="Paste recipe URL..."
           value={url}
@@ -138,7 +139,7 @@ export default function AddRecipeForm({ onSaved }: AddRecipeFormProps) {
       )}
 
       {showPasteFallback && !recipe && (
-        <div className="paste-fallback">
+        <div className={styles.pasteFallback}>
           <textarea
             className="notes-input"
             placeholder="Copy the recipe text from the website and paste it here..."
@@ -157,7 +158,7 @@ export default function AddRecipeForm({ onSaved }: AddRecipeFormProps) {
       )}
 
       {recipe && (
-        <div className="parsed-recipe">
+        <div className={styles.parsedRecipe}>
           {!editing ? (
             <>
               <div className="recipe-header-row">
@@ -321,9 +322,9 @@ export default function AddRecipeForm({ onSaved }: AddRecipeFormProps) {
             </>
           )}
 
-          <div className="score-section">
+          <div className={styles.scoreSection}>
             <h3>Rate this recipe</h3>
-            <div className="score-inputs">
+            <div className={styles.scoreInputs}>
               <label>
                 Rating (1-10)
                 <input type="number" min="1" max="10" value={rating} onChange={(e) => setRating(e.target.value)} />
@@ -347,7 +348,7 @@ export default function AddRecipeForm({ onSaved }: AddRecipeFormProps) {
                 rows={3}
               />
             </label>
-            <button className="generate-button save-button" onClick={handleSave} disabled={saving}>
+            <button className={`${'generate-button'} ${styles.saveButton}`} onClick={handleSave} disabled={saving}>
               {saving ? "Saving..." : "Save Recipe"}
             </button>
           </div>

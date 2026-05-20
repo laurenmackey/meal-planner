@@ -3,6 +3,7 @@ import { Meal, ParsedIngredient, PROTEINS, Protein, MEASUREMENT_UNITS } from "..
 import { apiFetch } from "../api";
 import AppHeader from "./AppHeader";
 import AddRecipeForm from "./AddRecipeForm";
+import styles from "./RecipesPage.module.css";
 
 interface MealWithIngredients extends Meal {
   ingredients: ParsedIngredient[];
@@ -152,14 +153,14 @@ export default function RecipesPage({ onLogout }: { onLogout: () => void }) {
         </div>
       )}
 
-      <div className={`add-recipe-toggle${showAddRecipe ? " active" : ""}`}>
+      <div className={showAddRecipe ? styles.addRecipeToggleActive : styles.addRecipeToggle}>
         <button className="generate-button" onClick={() => setShowAddRecipe(!showAddRecipe)}>
           {showAddRecipe ? "Cancel" : "Add Recipe"}
         </button>
       </div>
 
       {showAddRecipe && (
-        <div className="add-recipe-section">
+        <div className={styles.addRecipeSection}>
           <AddRecipeForm onSaved={() => { setShowAddRecipe(false); loadMeals(); }} />
         </div>
       )}
@@ -171,10 +172,10 @@ export default function RecipesPage({ onLogout }: { onLogout: () => void }) {
       )}
 
       {sortedProteins.map((protein) => (
-        <div key={protein} className="recipe-protein-group">
-          <h2 className="recipe-protein-heading">
+        <div key={protein} className={styles.proteinGroup}>
+          <h2 className={styles.proteinHeading}>
             {protein === "none" ? "No Protein" : protein.charAt(0).toUpperCase() + protein.slice(1)}
-            <span className="recipe-protein-count"> ({grouped[protein].length})</span>
+            <span className={styles.proteinCount}> ({grouped[protein].length})</span>
           </h2>
 
           {grouped[protein].map((meal) => {
@@ -183,15 +184,15 @@ export default function RecipesPage({ onLogout }: { onLogout: () => void }) {
             const isEditingIngs = editingIngredients === meal.id;
 
             return (
-              <div key={meal.id} className="recipe-item">
-                <div className="recipe-item-header" onClick={() => toggleMeal(meal.id)}>
+              <div key={meal.id} className={styles.item}>
+                <div className={styles.itemHeader} onClick={() => toggleMeal(meal.id)}>
                   <span className={`caret ${expanded ? "caret-open" : ""}`}>&#9654;</span>
-                  <span className="recipe-item-name">{meal.name}</span>
+                  <span className={styles.itemName}>{meal.name}</span>
                 </div>
 
                 {expanded && (
-                  <div className="recipe-item-body">
-                    <span className="recipe-item-meta">
+                  <div className={styles.itemBody}>
+                    <span className={styles.itemMeta}>
                       Rating: {meal.rating} | Ease: {meal.easinessScore} | Health: {meal.healthScore}
                     </span>
                     {!isEditing ? (
@@ -208,13 +209,13 @@ export default function RecipesPage({ onLogout }: { onLogout: () => void }) {
                           {meal.cookTimeMinutes && <span>Cook: {meal.cookTimeMinutes} min</span>}
                           <span>Serves: {meal.servingSize}</span>
                         </div>
-                        {meal.notes && <p className="recipe-notes">Notes: {meal.notes}</p>}
+                        {meal.notes && <p className={styles.notes}>Notes: {meal.notes}</p>}
 
                         {!isEditingIngs ? (
                           <>
                             {meal.ingredients.length > 0 && (
                               <>
-                                <h4 className="recipe-ingredients-heading">Ingredients</h4>
+                                <h4 className={styles.ingredientsHeading}>Ingredients</h4>
                                 <ul className="ingredient-list">
                                   {meal.ingredients.map((ing, i) => (
                                     <li key={i}>
@@ -228,7 +229,7 @@ export default function RecipesPage({ onLogout }: { onLogout: () => void }) {
                               </>
                             )}
 
-                            <div className="ingredients-buttons recipe-edit-buttons">
+                            <div className={`ingredients-buttons ${styles.editButtons}`}>
                               <button className="back-button" onClick={() => startEditing(meal)}>
                                 Edit Meal
                               </button>
@@ -239,7 +240,7 @@ export default function RecipesPage({ onLogout }: { onLogout: () => void }) {
                           </>
                         ) : (
                           <div className="edit-section">
-                            <h4 className="recipe-ingredients-heading">Edit Ingredients</h4>
+                            <h4 className={styles.ingredientsHeading}>Edit Ingredients</h4>
                             <div className="ingredient-edit-list">
                               {editIngredientValues.map((ing, i) => (
                                 <div key={i} className="ingredient-edit-item">

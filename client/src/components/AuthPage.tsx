@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { apiFetch } from "../api";
+import styles from "./AuthPage.module.css";
 
 interface AuthPageProps {
   onAuth: () => void;
@@ -52,10 +53,10 @@ export default function AuthPage({ onAuth }: AuthPageProps) {
   };
 
   return (
-    <div className="auth-page">
+    <div className={styles.page}>
       <h1 className="title">🍽️ Meal Planner</h1>
-      <form className="auth-form" onSubmit={handleSubmit}>
-        {error && <div className="auth-error">{error}</div>}
+      <form className={styles.form} onSubmit={handleSubmit}>
+        {error && <div className={styles.error}>{error}</div>}
 
         <label htmlFor="email">Email</label>
         <input
@@ -80,17 +81,17 @@ export default function AuthPage({ onAuth }: AuthPageProps) {
 
         {!isLogin && (
           <>
-            <div className="auth-toggle-row">
+            <div className={styles.toggleRow}>
               <button
                 type="button"
-                className={`auth-tab ${!useInviteCode ? "active" : ""}`}
+                className={`${styles.tab} ${!useInviteCode ? styles.tabActive : ""}`}
                 onClick={() => setUseInviteCode(false)}
               >
                 Create household
               </button>
               <button
                 type="button"
-                className={`auth-tab ${useInviteCode ? "active" : ""}`}
+                className={`${styles.tab} ${useInviteCode ? styles.tabActive : ""}`}
                 onClick={() => setUseInviteCode(true)}
               >
                 Join household
@@ -125,11 +126,11 @@ export default function AuthPage({ onAuth }: AuthPageProps) {
           </>
         )}
 
-        <button className="auth-submit" type="submit" disabled={loading}>
+        <button className={styles.submit} type="submit" disabled={loading}>
           {loading ? "Please wait..." : isLogin ? "Log In" : "Sign Up"}
         </button>
 
-        <p className="auth-switch">
+        <p className={styles.switch}>
           {isLogin ? "Don't have an account? " : "Already have an account? "}
           <a
             href="#"

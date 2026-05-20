@@ -5,13 +5,15 @@ import MealCard from "./components/MealCard";
 import AuthPage from "./components/AuthPage";
 import MealHistoryPage from "./components/MealHistoryPage";
 import RecipesPage from "./components/RecipesPage";
+import SettingsPage from "./components/SettingsPage";
 import AppHeader from "./components/AppHeader";
 import WeeklyStaples from "./components/WeeklyStaples";
 import GoogleCalendar from "./components/GoogleCalendar";
 import { apiFetch } from "./api";
 import "./App.css";
+import styles from "./components/HomePage.module.css";
 
-const DEFAULT_COUNT = 3;
+const DEFAULT_COUNT = "3";
 
 export default function App() {
   const [authed, setAuthed] = useState<boolean | null>(null);
@@ -41,12 +43,13 @@ export default function App() {
       <Route path="/" element={<HomePage onLogout={handleLogout} />} />
       <Route path="/recipes" element={<RecipesPage onLogout={handleLogout} />} />
       <Route path="/history" element={<MealHistoryPage onLogout={handleLogout} />} />
+      <Route path="/settings" element={<SettingsPage onLogout={handleLogout} />} />
     </Routes>
   );
 }
 
 function HomePage({ onLogout }: { onLogout: () => void }) {
-  const [countInput, setCountInput] = useState(String(DEFAULT_COUNT));
+  const [countInput, setCountInput] = useState(DEFAULT_COUNT);
   const count = countInput === "" ? 0 : Number(countInput);
   const [meals, setMeals] = useState<MealSelection[]>([]);
   const [loading, setLoading] = useState(false);
@@ -58,6 +61,13 @@ function HomePage({ onLogout }: { onLogout: () => void }) {
   const [multipliers, setMultipliers] = useState<Record<number, number>>({});
 
   useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const res = await apiFetch("/api/v1/household/settings");
+        const data = await res.json();
+        if (res.ok) setCountInput(String(data.settings.defaultMealCount));
+      } catch {}
+    };
     const loadSelections = async () => {
       try {
         const res = await apiFetch("/api/v1/weeklySelections");
@@ -74,18 +84,23 @@ function HomePage({ onLogout }: { onLogout: () => void }) {
         }
       } catch {}
     };
+    loadSettings();
     loadSelections();
   }, []);
 
+  const [shortfall, setShortfall] = useState(0);
+
   const generateMeals = async (includeAll = false) => {
+    const requestCount = includeAll && shortfall > 0 ? shortfall : count;
     setLoading(true);
     setError(null);
     setInfo(null);
     setShowIncludeAll(false);
+    setShortfall(0);
     try {
       const res = await apiFetch("/api/v1/chooseWeeklyMeals", {
         method: "POST",
-        body: JSON.stringify({ count, includeAll }),
+        body: JSON.stringify({ count: requestCount, includeAll }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -94,15 +109,17 @@ function HomePage({ onLogout }: { onLogout: () => void }) {
       }
       if (data.meals.length === 0) {
         setError("No eligible meals found. All meals have been chosen recently or are all displayed.");
-        // Only offer retry if we haven't already tried including all meals
         if (!includeAll) {
+          setShortfall(requestCount);
           setShowIncludeAll(true);
         }
         return;
       }
-      if (data.meals.length < count) {
+      if (data.meals.length < requestCount) {
+        const remaining = requestCount - data.meals.length;
         setInfo(`Only ${data.meals.length} eligible meal${data.meals.length === 1 ? "" : "s"} found — not enough meals available to fill your request.`);
         if (!includeAll) {
+          setShortfall(remaining);
           setShowIncludeAll(true);
         }
       }
@@ -195,11 +212,11 @@ function HomePage({ onLogout }: { onLogout: () => void }) {
     <div className="app">
       <AppHeader title="🍽️ Meal Planner" onLogout={onLogout} />
 
-      <div className="controls">
+      <div className={styles.controls}>
         <label htmlFor="count">Number of meals:</label>
         <input
           id="count"
-          className="count-input"
+          className={styles.countInput}
           type="number"
           min={0}
           value={countInput}
@@ -220,7 +237,7 @@ function HomePage({ onLogout }: { onLogout: () => void }) {
             {error}
             {showIncludeAll && (
               <div>
-                <a href="#" className="include-all-link" onClick={(e) => { e.preventDefault(); generateMeals(true); }}>
+                <a href="#" className={styles.includeAllLink} onClick={(e) => { e.preventDefault(); generateMeals(true); }}>
                   Include recently suggested meals
                 </a>
               </div>
@@ -236,7 +253,7 @@ function HomePage({ onLogout }: { onLogout: () => void }) {
             {info}
             {showIncludeAll && (
               <div>
-                <a href="#" className="include-all-link" onClick={(e) => { e.preventDefault(); generateMeals(true); }}>
+                <a href="#" className={styles.includeAllLink} onClick={(e) => { e.preventDefault(); generateMeals(true); }}>
                   Include recently suggested meals
                 </a>
               </div>
@@ -248,10 +265,10 @@ function HomePage({ onLogout }: { onLogout: () => void }) {
 
       {meals.length > 0 && (
         <div>
-          <div className="meals-header">
+          <div className={styles.mealsHeader}>
             <h2>This Week's Meals</h2>
             <button
-              className="reject-button"
+              className={styles.rejectButton}
               onClick={() => rejectMeals(meals.map((m) => m.foodSelectionId))}
             >
               Reject All
@@ -289,8 +306,8 @@ function HomePage({ onLogout }: { onLogout: () => void }) {
       )}
 
       {ingredients && (
-        <div className="ingredients-section">
-          <h2 className="ingredients-heading">Ingredients</h2>
+        <div className={styles.ingredientsSection}>
+          <h2 className={styles.ingredientsHeading}>Ingredients</h2>
           {ingredients.length === 0 ? (
             <p className="empty-state">No ingredients found for the selected meals.</p>
           ) : (
@@ -314,9 +331,9 @@ function HomePage({ onLogout }: { onLogout: () => void }) {
                       <option key={u} value={u}>{u}</option>
                     ))}
                   </select>
-                  <div className="ingredient-detail">
-                    <span className="ingredient-name">{ing.name}{ing.optional && <span className="optional-tag"> (optional)</span>}</span>
-                    <span className="ingredient-sources"> ({ing.sources.join(", ")})</span>
+                  <div className={styles.ingredientDetail}>
+                    <span className={styles.ingredientName}>{ing.name}{ing.optional && <span className={styles.optionalTag}> (optional)</span>}</span>
+                    <span className={styles.ingredientSources}> ({ing.sources.join(", ")})</span>
                   </div>
                   <button className="remove-ingredient" onClick={() => removeIngredient(i)}>x</button>
                 </div>

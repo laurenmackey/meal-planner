@@ -1,31 +1,54 @@
 import pool from "../db";
-import { Protein, MealSelection } from "../types";
+import { MealSelection, HouseholdSettings } from "../types";
 import { toMeal } from "../mappers";
 
-export const DEFAULT_MEAL_COUNT = 3;
-const LOOKBACK_WEEKS = 3;
-const RATING_WEIGHT = 0.3;
-const EASINESS_WEIGHT = 0.35;
-const HEALTH_WEIGHT = 0.2;
 const PROTEIN_VARIETY_BONUS = 2;
 const PREFERRED_PROTEIN_BONUS = 1;
-const PREFERRED_PROTEINS: Protein[] = ["chicken", "turkey", "fish"];
+
+async function getHouseholdSettings(householdId: number): Promise<HouseholdSettings> {
+  const result = await pool.query(
+    `SELECT lookback_weeks, rating_weight, easiness_weight, health_weight,
+            preferred_proteins, default_meal_count
+     FROM households WHERE id = $1`,
+    [householdId]
+  );
+  if (result.rows.length === 0) {
+    throw new Error(`Household ${householdId} not found`);
+  }
+  const row = result.rows[0];
+  return {
+    lookbackWeeks: row.lookback_weeks,
+    ratingWeight: Number(row.rating_weight),
+    easinessWeight: Number(row.easiness_weight),
+    healthWeight: Number(row.health_weight),
+    preferredProteins: row.preferred_proteins,
+    defaultMealCount: row.default_meal_count,
+  };
+}
 
 export async function chooseWeeklyMeals(
   householdId: number,
-  count = DEFAULT_MEAL_COUNT,
+  count?: number,
   includeAll = false
 ): Promise<MealSelection[]> {
-  // Check how many non-rejected meals already exist this week
-  const existingResult = await pool.query(
-    `SELECT COUNT(*) FROM food_selections
-     WHERE household_id = $1 AND meal_id IS NOT NULL
-       AND week_start_utc(chosen_at) = week_start_utc(NOW())
-       AND status != 'rejected'`,
-    [householdId]
-  );
-  const existingCount = Number(existingResult.rows[0].count);
-  const needed = Math.max(0, count - existingCount);
+  const settings = await getHouseholdSettings(householdId);
+
+  let needed: number;
+  if (count != null) {
+    // Explicit count: generate exactly this many new meals
+    needed = count;
+  } else {
+    // No count (cron job): fill up to defaultMealCount for the week
+    const existingResult = await pool.query(
+      `SELECT COUNT(*) FROM food_selections
+       WHERE household_id = $1 AND meal_id IS NOT NULL
+         AND week_start_utc(chosen_at) = week_start_utc(NOW())
+         AND status != 'rejected'`,
+      [householdId]
+    );
+    const existingCount = Number(existingResult.rows[0].count);
+    needed = Math.max(0, settings.defaultMealCount - existingCount);
+  }
 
   if (needed === 0) return [];
 
@@ -53,7 +76,7 @@ export async function chooseWeeklyMeals(
            FROM food_selections fs
            WHERE fs.meal_id IS NOT NULL
              AND fs.household_id = $1
-             AND fs.chosen_at > NOW() - INTERVAL '${LOOKBACK_WEEKS} weeks'
+             AND fs.chosen_at > NOW() - INTERVAL '${settings.lookbackWeeks} weeks'
          )`,
         [householdId]
       );
@@ -80,18 +103,14 @@ export async function chooseWeeklyMeals(
 
   const ranked = eligible
     .map((meal) => {
-      const varietyBonus = usedProteins.has(meal.mainProtein)
-        ? 0
-        : PROTEIN_VARIETY_BONUS;
+      const varietyBonus = usedProteins.has(meal.mainProtein) ? 0 : PROTEIN_VARIETY_BONUS;
       const preferredBonus =
-        meal.mainProtein && PREFERRED_PROTEINS.includes(meal.mainProtein)
-          ? PREFERRED_PROTEIN_BONUS
-          : 0;
+        meal.mainProtein && settings.preferredProteins.includes(meal.mainProtein) ? PREFERRED_PROTEIN_BONUS : 0;
 
       const score =
-        meal.rating * RATING_WEIGHT +
-        meal.easinessScore * EASINESS_WEIGHT +
-        meal.healthScore * HEALTH_WEIGHT +
+        meal.rating * settings.ratingWeight +
+        meal.easinessScore * settings.easinessWeight +
+        meal.healthScore * settings.healthWeight +
         varietyBonus +
         preferredBonus;
 

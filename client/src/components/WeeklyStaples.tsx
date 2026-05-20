@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { StapleSelection, FoodStaple } from "../../../src/types";
 import { apiFetch } from "../api";
+import styles from "./WeeklyStaples.module.css";
 
 interface WeeklyStaplesProps {
   onError: (msg: string) => void;
@@ -92,39 +93,39 @@ export default function WeeklyStaples({ onError, onStaplesChange }: WeeklyStaple
   if (totalStapleCount === 0 && staples.length === 0) return null;
 
   return (
-    <div className="staples-section">
-      <div className="staples-header">
-        <h2 className="staples-heading">Weekly Staples</h2>
+    <div className={styles.section}>
+      <div className={styles.header}>
+        <h2 className={styles.heading}>Weekly Staples</h2>
         {staples.length < totalStapleCount && (
-          <a href="#" className="restore-staples-link" onClick={(e) => { e.preventDefault(); restoreStaples(); }}>
+          <a href="#" className={styles.restoreLink} onClick={(e) => { e.preventDefault(); restoreStaples(); }}>
             Restore removed
           </a>
         )}
       </div>
-      <div className="staple-search-wrapper">
+      <div className={styles.searchWrapper}>
         <input
-          className="staple-search-input"
+          className={styles.searchInput}
           type="text"
           placeholder="Search staples to add..."
           value={stapleSearch}
           onChange={(e) => setStapleSearch(e.target.value)}
         />
         {filteredStaples.length > 0 && (
-          <div className="staple-search-results">
+          <div className={styles.searchResults}>
             {filteredStaples.map((s) => (
-              <button key={s.id} className="staple-search-result" onClick={() => addStapleToWeek(s.id)}>
+              <button key={s.id} className={styles.searchResult} onClick={() => addStapleToWeek(s.id)}>
                 {s.name}
               </button>
             ))}
           </div>
         )}
       </div>
-      <div className="staple-list">
+      <div className={styles.list}>
         {staples.map((staple) => (
-          <div key={staple.foodSelectionId} className="staple-row">
-            <span className="staple-name">{staple.name}</span>
-            {staple.notes && <span className="staple-notes"> — {staple.notes}</span>}
-            <button className="remove-staple" onClick={() => rejectStaple(staple.foodSelectionId)}>x</button>
+          <div key={staple.foodSelectionId} className={styles.row}>
+            <span className={styles.name}>{staple.name}</span>
+            {staple.notes && <span className={styles.stapleNotes}> — {staple.notes}</span>}
+            <button className={styles.removeButton} onClick={() => rejectStaple(staple.foodSelectionId)}>x</button>
           </div>
         ))}
       </div>

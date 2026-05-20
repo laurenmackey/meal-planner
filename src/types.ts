@@ -52,6 +52,15 @@ export interface Household {
   inviteCode: string;
 }
 
+export interface HouseholdSettings {
+  lookbackWeeks: number;
+  ratingWeight: number;
+  easinessWeight: number;
+  healthWeight: number;
+  preferredProteins: Protein[];
+  defaultMealCount: number;
+}
+
 export interface AuthResponse {
   user: { id: number; email: string };
   household: Household;

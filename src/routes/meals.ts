@@ -1,7 +1,7 @@
 import { Router, Response } from "express";
 import { ChooseWeeklyMealsResponse } from "../types";
 import { authenticate, AuthRequest } from "../middleware/auth";
-import { chooseWeeklyMeals, DEFAULT_MEAL_COUNT } from "../services/mealSelection";
+import { chooseWeeklyMeals } from "../services/mealSelection";
 import { runWeeklyMealJob } from "../cron/weeklyMeals";
 
 const router = Router();
@@ -10,7 +10,7 @@ const router = Router();
 // Body: { count?: number, includeAll?: boolean }
 router.post("/chooseWeeklyMeals", authenticate, async (req: AuthRequest, res: Response) => {
   const householdId = req.user!.householdId;
-  const count = req.body.count ?? DEFAULT_MEAL_COUNT;
+  const count = req.body.count;
   const includeAll = req.body.includeAll ?? false;
 
   try {

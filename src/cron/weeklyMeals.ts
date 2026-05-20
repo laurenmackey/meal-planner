@@ -1,7 +1,7 @@
 import cron from "node-cron";
 import { Resend } from "resend";
 import pool from "../db";
-import { chooseWeeklyMeals, DEFAULT_MEAL_COUNT } from "../services/mealSelection";
+import { chooseWeeklyMeals } from "../services/mealSelection";
 import { chooseWeeklyStaples } from "../services/stapleSelection";
 import { MealSelection } from "../types";
 import { toMeal } from "../mappers";
@@ -76,7 +76,7 @@ async function runWeeklyMealJob() {
     for (const household of households.rows) {
       const householdId = household.id;
 
-      await chooseWeeklyMeals(householdId, DEFAULT_MEAL_COUNT);
+      await chooseWeeklyMeals(householdId);
       await chooseWeeklyStaples(householdId);
 
       // Fetch all this week's meals for the email (don't show staples in email)

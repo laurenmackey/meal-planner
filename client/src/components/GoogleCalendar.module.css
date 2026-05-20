@@ -1,0 +1,72 @@
+.section {
+  margin-top: 32px;
+  padding-top: 16px;
+  border-top: 1px solid #eee;
+}
+
+.heading {
+  font-family: 'Libre Baskerville', serif;
+  color: #444;
+  margin: 0 0 16px;
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 12px;
+}
+
+.disconnect {
+  padding: 4px 12px;
+  background: none;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 12px;
+  font-family: inherit;
+  color: #888;
+  cursor: pointer;
+}
+
+.schedule {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.mealName {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 500;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dateInput,
+.timeInput {
+  padding: 6px 8px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: inherit;
+}
+
+.added {
+  color: #0f5132;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.editLink {
+  color: #2d6a4f;
+  font-size: 13px;
+  text-decoration: none;
+}

@@ -6,6 +6,7 @@ import mealsRouter from "./routes/meals";
 import foodSelectionsRouter from "./routes/foodSelections";
 import recipesRouter from "./routes/recipes";
 import googleCalendarRouter from "./routes/googleCalendar";
+import householdRouter from "./routes/household";
 import { startWeeklyMealCron } from "./cron/weeklyMeals";
 
 const app = express();
@@ -18,6 +19,7 @@ app.use("/api/v1", mealsRouter);
 app.use("/api/v1", foodSelectionsRouter);
 app.use("/api/v1", recipesRouter);
 app.use("/api/v1", googleCalendarRouter);
+app.use("/api/v1", householdRouter);
 
 // Serve React frontend in production
 const clientDistPath = path.join(process.cwd(), "client/dist");

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { MealSelection } from "../../../src/types";
 import { apiFetch } from "../api";
+import styles from "./GoogleCalendar.module.css";
 
 // Smart default days for scheduling meals
 function getDefaultDays(mealCount: number): number[] {
@@ -131,8 +132,8 @@ export default function GoogleCalendar({ meals, onError }: GoogleCalendarProps) 
   if (connected === null) return null;
 
   return (
-    <div className="calendar-section">
-      <h2 className="calendar-heading">Google Calendar</h2>
+    <div className={styles.section}>
+      <h2 className={styles.heading}>Google Calendar</h2>
       {!connected ? (
         <button className="generate-button" onClick={connect}>
           Connect Google Calendar
@@ -140,11 +141,11 @@ export default function GoogleCalendar({ meals, onError }: GoogleCalendarProps) 
       ) : (
         <div>
           {!showSchedule ? (
-            <div className="calendar-actions">
+            <div className={styles.actions}>
               {eventIds.length > 0 ? (
                 <>
-                  <span className="calendar-added">Added to Calendar</span>
-                  <a href="#" className="calendar-edit-link" onClick={(e) => { e.preventDefault(); openSchedule(); }}>
+                  <span className={styles.added}>Added to Calendar</span>
+                  <a href="#" className={styles.editLink} onClick={(e) => { e.preventDefault(); openSchedule(); }}>
                     Edit Schedule
                   </a>
                 </>
@@ -153,30 +154,30 @@ export default function GoogleCalendar({ meals, onError }: GoogleCalendarProps) 
                   Add Meals to Calendar
                 </button>
               )}
-              <button className="calendar-disconnect" onClick={disconnect}>
+              <button className={styles.disconnect} onClick={disconnect}>
                 Disconnect
               </button>
             </div>
           ) : (
-            <div className="calendar-schedule">
+            <div className={styles.schedule}>
               {schedule.map((s, i) => (
-                <div key={i} className="calendar-row">
-                  <span className="calendar-meal-name">{s.mealName}</span>
+                <div key={i} className={styles.row}>
+                  <span className={styles.mealName}>{s.mealName}</span>
                   <input
                     type="date"
-                    className="calendar-date-input"
+                    className={styles.dateInput}
                     value={s.date}
                     onChange={(e) => updateScheduleEntry(i, "date", e.target.value)}
                   />
                   <input
                     type="time"
-                    className="calendar-time-input"
+                    className={styles.timeInput}
                     value={s.startTime}
                     onChange={(e) => updateScheduleEntry(i, "startTime", e.target.value)}
                   />
                 </div>
               ))}
-              <div className="calendar-actions">
+              <div className={styles.actions}>
                 {(!success || dirty) && (
                   <button
                     className="generate-button"
