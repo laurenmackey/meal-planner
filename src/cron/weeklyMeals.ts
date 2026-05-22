@@ -10,7 +10,11 @@ const APP_URL = process.env.APP_URL || "http://localhost:3000";
 const EMAIL_FROM = process.env.EMAIL_FROM || "Meal Planner <onboarding@resend.dev>";
 
 function getResend() {
-  return new Resend(process.env.RESEND_API_KEY);
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    console.error("RESEND_API_KEY is not set. Available env vars:", Object.keys(process.env).filter(k => k.startsWith("RESEND") || k.startsWith("NODE")).join(", "));
+  }
+  return new Resend(apiKey);
 }
 
 function buildEmailHtml(meals: MealSelection[]): string {
