@@ -118,6 +118,86 @@ router.get("/allStaples", authenticate, async (req: AuthRequest, res: Response) 
   }
 });
 
+// POST /api/v1/staples
+// Create a new food staple
+router.post("/staples", authenticate, async (req: AuthRequest, res: Response) => {
+  const householdId = req.user!.householdId;
+  const { name } = req.body;
+
+  if (!name || typeof name !== "string" || !name.trim()) {
+    res.status(400).json({ error: "name is required" });
+    return;
+  }
+
+  try {
+    const result = await pool.query(
+      `INSERT INTO food_staples (name, household_id) VALUES ($1, $2) RETURNING id, name, description, notes`,
+      [name.trim(), householdId]
+    );
+    res.json({ staple: result.rows[0] });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    console.error("Error creating staple:", err);
+    res.status(500).json({ error: "Failed to create staple", details: message });
+  }
+});
+
+// PUT /api/v1/staples/:id
+// Update a food staple
+router.put("/staples/:id", authenticate, async (req: AuthRequest, res: Response) => {
+  const householdId = req.user!.householdId;
+  const stapleId = Number(req.params.id);
+  const { name } = req.body;
+
+  if (!name || typeof name !== "string" || !name.trim()) {
+    res.status(400).json({ error: "name is required" });
+    return;
+  }
+
+  try {
+    const result = await pool.query(
+      `UPDATE food_staples SET name = $1 WHERE id = $2 AND household_id = $3 RETURNING id, name, description, notes`,
+      [name.trim(), stapleId, householdId]
+    );
+    if (result.rows.length === 0) {
+      res.status(404).json({ error: "Staple not found" });
+      return;
+    }
+    res.json({ staple: result.rows[0] });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    console.error("Error updating staple:", err);
+    res.status(500).json({ error: "Failed to update staple", details: message });
+  }
+});
+
+// DELETE /api/v1/staples/:id
+// Delete a food staple and its food_selections
+router.delete("/staples/:id", authenticate, async (req: AuthRequest, res: Response) => {
+  const householdId = req.user!.householdId;
+  const stapleId = Number(req.params.id);
+
+  try {
+    await pool.query(
+      "DELETE FROM food_selections WHERE food_staple_id = $1 AND household_id = $2",
+      [stapleId, householdId]
+    );
+    const result = await pool.query(
+      "DELETE FROM food_staples WHERE id = $1 AND household_id = $2 RETURNING id",
+      [stapleId, householdId]
+    );
+    if (result.rows.length === 0) {
+      res.status(404).json({ error: "Staple not found" });
+      return;
+    }
+    res.json({ deleted: true });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    console.error("Error deleting staple:", err);
+    res.status(500).json({ error: "Failed to delete staple", details: message });
+  }
+});
+
 // POST /api/v1/addWeeklyStaple
 // Body: { foodStapleId: number }
 // Adds a single staple to this week's food_selections
