@@ -256,18 +256,18 @@ router.post("/generateIngredients", authenticate, async (req: AuthRequest, res: 
     }
 
     const result = await pool.query(
-      `SELECT i.*, m.name AS meal_name
+      `SELECT i.*
        FROM ingredients i
        JOIN meals m ON m.id = i.meal_id
        WHERE i.meal_id = ANY($1) AND m.household_id = $2
-      ORDER BY i.optional ASC, i.name ASC`,
+       ORDER BY i.optional ASC, i.name ASC`,
       [mealIds, householdId]
     );
 
     // Aggregate by name, converting compatible units to a common base
     // For convertible units: aggregate in base units, then pick best display unit
     // For non-convertible units (whole, cloves, pinch, to_taste): aggregate by name + unit
-    const baseAggregated: Record<string, { name: string; baseQuantity: number; group: string; sources: string[]; optional: boolean }> = {};
+    const baseAggregated: Record<string, { name: string; baseQuantity: number; group: string; optional: boolean; notes: string[] }> = {};
     const directAggregated: Record<string, AggregatedIngredient> = {};
 
     for (const row of result.rows) {
@@ -279,23 +279,23 @@ router.post("/generateIngredients", authenticate, async (req: AuthRequest, res: 
         // Convertible unit — aggregate in base units by name + group
         const key = `${row.name}::${unitInfo.group}`;
         if (!baseAggregated[key]) {
-          baseAggregated[key] = { name: row.name, baseQuantity: 0, group: unitInfo.group, sources: [], optional: true };
+          baseAggregated[key] = { name: row.name, baseQuantity: 0, group: unitInfo.group, optional: true, notes: [] };
         }
         baseAggregated[key].baseQuantity += quantity * unitInfo.factor;
         if (!row.optional) baseAggregated[key].optional = false;
-        if (!baseAggregated[key].sources.includes(row.meal_name)) {
-          baseAggregated[key].sources.push(row.meal_name);
+        if (row.notes && !baseAggregated[key].notes.includes(row.notes)) {
+          baseAggregated[key].notes.push(row.notes);
         }
       } else {
         // Non-convertible unit — aggregate by name + unit directly
         const key = `${row.name}::${row.measurement_unit}`;
         if (!directAggregated[key]) {
-          directAggregated[key] = { name: row.name, quantity: 0, measurementUnit: row.measurement_unit, sources: [], optional: true };
+          directAggregated[key] = { name: row.name, quantity: 0, measurementUnit: row.measurement_unit, optional: true, notes: [] };
         }
         directAggregated[key].quantity += quantity;
         if (!row.optional) directAggregated[key].optional = false;
-        if (!directAggregated[key].sources.includes(row.meal_name)) {
-          directAggregated[key].sources.push(row.meal_name);
+        if (row.notes && !directAggregated[key].notes.includes(row.notes)) {
+          directAggregated[key].notes.push(row.notes);
         }
       }
     }
@@ -303,7 +303,7 @@ router.post("/generateIngredients", authenticate, async (req: AuthRequest, res: 
     // Convert base-aggregated back to best display units
     const convertedIngredients: AggregatedIngredient[] = Object.values(baseAggregated).map((entry) => {
       const { quantity, unit } = bestDisplayUnit(entry.baseQuantity, entry.group);
-      return { name: entry.name, quantity, measurementUnit: unit as AggregatedIngredient["measurementUnit"], sources: entry.sources, optional: entry.optional };
+      return { name: entry.name, quantity, measurementUnit: unit as AggregatedIngredient["measurementUnit"], optional: entry.optional, notes: entry.notes };
     });
 
     const ingredients = [...convertedIngredients, ...Object.values(directAggregated)]

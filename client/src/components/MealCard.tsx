@@ -16,6 +16,12 @@ export default function MealCard({ meal, multiplier, onReject, onMultiplierChang
         <div>
           <h3 className={styles.name}>{meal.name}</h3>
           {meal.description && <p className={styles.description}>{meal.description}</p>}
+          {meal.notes && <p className={styles.notes}>{meal.notes}</p>}
+          {meal.url && (
+            <a href={meal.url} target="_blank" rel="noopener noreferrer" className="recipe-link">
+              View Recipe
+            </a>
+          )}
           <div className={styles.stats}>
             <span>Rating: {meal.rating}/10</span>
             {" · "}

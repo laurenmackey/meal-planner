@@ -177,6 +177,8 @@ function HomePage({ onLogout }: { onLogout: () => void }) {
 
   const [copied, setCopied] = useState(false);
   const [currentStaples, setCurrentStaples] = useState<StapleSelection[]>([]);
+  const [extraItems, setExtraItems] = useState<string[]>([]);
+  const [newItem, setNewItem] = useState("");
 
   const copyListToClipboard = async () => {
     const lines: string[] = [];
@@ -185,8 +187,13 @@ function HomePage({ onLogout }: { onLogout: () => void }) {
       for (const ing of ingredients) {
         const unit = ing.measurementUnit === "whole" ? "" : ` ${ing.measurementUnit}`;
         const optional = ing.optional ? " (optional)" : "";
-        lines.push(`${ing.quantity}${unit} ${ing.name}${optional}`);
+        const notes = ing.notes.length > 0 ? ` — ${ing.notes.join("; ")}` : "";
+        lines.push(`${ing.quantity}${unit} ${ing.name}${optional}${notes}`);
       }
+    }
+
+    for (const item of extraItems) {
+      lines.push(item);
     }
 
     for (const s of currentStaples) {
@@ -206,6 +213,17 @@ function HomePage({ onLogout }: { onLogout: () => void }) {
     setIngredients((prev) =>
       prev ? prev.map((ing, i) => (i === index ? { ...ing, ...updates } : ing)) : null
     );
+  };
+
+  const addExtraItem = () => {
+    const trimmed = newItem.trim();
+    if (!trimmed) return;
+    setExtraItems((prev) => [...prev, trimmed]);
+    setNewItem("");
+  };
+
+  const removeExtraItem = (index: number) => {
+    setExtraItems((prev) => prev.filter((_, i) => i !== index));
   };
 
   return (
@@ -307,7 +325,7 @@ function HomePage({ onLogout }: { onLogout: () => void }) {
 
       {ingredients && (
         <div className={styles.ingredientsSection}>
-          <h2 className={styles.ingredientsHeading}>Ingredients</h2>
+          <h2 className={styles.ingredientsHeading}>Grocery List</h2>
           {ingredients.length === 0 ? (
             <p className="empty-state">No ingredients found for the selected meals.</p>
           ) : (
@@ -333,13 +351,37 @@ function HomePage({ onLogout }: { onLogout: () => void }) {
                   </select>
                   <div className={styles.ingredientDetail}>
                     <span className={styles.ingredientName}>{ing.name}{ing.optional && <span className={styles.optionalTag}> (optional)</span>}</span>
-                    <span className={styles.ingredientSources}> ({ing.sources.join(", ")})</span>
+                    {ing.notes.length > 0 && (
+                      <span className={styles.ingredientNotes}> — {ing.notes.join("; ")}</span>
+                    )}
                   </div>
                   <button className="remove-ingredient" onClick={() => removeIngredient(i)}>x</button>
                 </div>
               ))}
             </div>
           )}
+
+          {extraItems.length > 0 && (
+            <div className={styles.extraItems}>
+              {extraItems.map((item, i) => (
+                <div key={i} className="ingredient-edit-row">
+                  <span className={styles.extraItemName}>{item}</span>
+                  <button className="remove-ingredient" onClick={() => removeExtraItem(i)}>x</button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className={styles.addItemRow}>
+            <input
+              className="edit-input"
+              placeholder="Add item to list..."
+              value={newItem}
+              onChange={(e) => setNewItem(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") addExtraItem(); }}
+            />
+            <button className="back-button" onClick={addExtraItem} disabled={!newItem.trim()}>Add</button>
+          </div>
         </div>
       )}
       <WeeklyStaples onError={setError} onStaplesChange={setCurrentStaples} />

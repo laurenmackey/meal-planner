@@ -107,8 +107,8 @@ export interface AggregatedIngredient {
   name: string;
   quantity: number;
   measurementUnit: MeasurementUnit;
-  sources: string[];
   optional: boolean;
+  notes: string[];
 }
 
 export interface ParsedRecipe {

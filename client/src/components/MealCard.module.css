@@ -20,6 +20,13 @@
   color: #666;
 }
 
+.notes {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: #b45309;
+  font-style: italic;
+}
+
 .stats {
   font-size: 14px;
   color: #888;
