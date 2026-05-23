@@ -44,3 +44,36 @@ export function setAuthCookie(res: Response, payload: AuthPayload): void {
 export function clearAuthCookie(res: Response): void {
   res.clearCookie(COOKIE_NAME);
 }
+
+// Pending Google signup — stores Google profile until household is chosen
+export const GOOGLE_PENDING_COOKIE = "google_pending";
+
+export interface GooglePendingPayload {
+  googleId: string;
+  email: string;
+  name: string;
+}
+
+export function setGooglePendingCookie(res: Response, payload: GooglePendingPayload): void {
+  const token = jwt.sign(payload, JWT_SECRET, { expiresIn: "15m" });
+  res.cookie(GOOGLE_PENDING_COOKIE, token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: 15 * 60 * 1000,
+  });
+}
+
+export function getGooglePendingPayload(req: Request): GooglePendingPayload | null {
+  const token = req.cookies?.[GOOGLE_PENDING_COOKIE];
+  if (!token) return null;
+  try {
+    return jwt.verify(token, JWT_SECRET) as GooglePendingPayload;
+  } catch {
+    return null;
+  }
+}
+
+export function clearGooglePendingCookie(res: Response): void {
+  res.clearCookie(GOOGLE_PENDING_COOKIE);
+}

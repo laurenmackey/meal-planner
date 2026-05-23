@@ -2,7 +2,8 @@ import { Router, Response } from "express";
 import Anthropic from "@anthropic-ai/sdk";
 import pool from "../db";
 import { authenticate, AuthRequest } from "../middleware/auth";
-import { ParsedRecipe, MEASUREMENT_UNITS, PROTEINS } from "../types";
+import { toMeal } from "../mappers";
+import { ParsedIngredient, ParsedRecipe, MEASUREMENT_UNITS, PROTEINS } from "../types";
 
 const router = Router();
 
@@ -188,6 +189,162 @@ router.post("/saveRecipe", authenticate, async (req: AuthRequest, res: Response)
     res.status(500).json({ error: "Failed to save recipe", details: message });
   } finally {
     client.release();
+  }
+});
+
+// GET /api/v1/allMeals
+// Returns all meals for the household with their ingredients
+router.get("/allMeals", authenticate, async (req: AuthRequest, res: Response) => {
+  const householdId = req.user!.householdId;
+  try {
+    const mealsResult = await pool.query(
+      "SELECT * FROM meals WHERE household_id = $1 ORDER BY name ASC",
+      [householdId]
+    );
+    const meals = mealsResult.rows.map(toMeal);
+
+    const ingredientsResult = await pool.query(
+      `SELECT i.* FROM ingredients i
+       JOIN meals m ON m.id = i.meal_id
+       WHERE m.household_id = $1
+       ORDER BY i.optional ASC, i.name ASC`,
+      [householdId]
+    );
+
+    const ingredientsByMeal: Record<number, ParsedIngredient[]> = {};
+    for (const row of ingredientsResult.rows) {
+      if (!ingredientsByMeal[row.meal_id]) ingredientsByMeal[row.meal_id] = [];
+      ingredientsByMeal[row.meal_id].push({
+        id: row.id,
+        name: row.name,
+        quantity: Number(row.quantity),
+        measurementUnit: row.measurement_unit,
+        optional: row.optional,
+        notes: row.notes,
+      });
+    }
+
+    const mealsWithIngredients = meals.map((meal) => ({
+      ...meal,
+      ingredients: ingredientsByMeal[meal.id] || [],
+    }));
+
+    res.json({ meals: mealsWithIngredients });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    console.error("Error fetching all meals:", err);
+    res.status(500).json({ error: "Failed to fetch meals", details: message });
+  }
+});
+
+// PUT /api/v1/meals/:id
+// Update a meal's fields
+router.put("/meals/:id", authenticate, async (req: AuthRequest, res: Response) => {
+  const householdId = req.user!.householdId;
+  const mealId = Number(req.params.id);
+  const { name, description, notes, url, sourceName, prepTimeMinutes, cookTimeMinutes, mainProtein, rating, easinessScore, healthScore, servingSize } = req.body;
+
+  try {
+    const result = await pool.query(
+      `UPDATE meals SET
+        name = COALESCE($1, name),
+        description = $2,
+        notes = $3,
+        url = $4,
+        source_name = $5,
+        prep_time_minutes = $6,
+        cook_time_minutes = $7,
+        main_protein = $8,
+        rating = COALESCE($9, rating),
+        easiness_score = COALESCE($10, easiness_score),
+        health_score = COALESCE($11, health_score),
+        serving_size = COALESCE($12, serving_size),
+        updated_at = NOW()
+      WHERE id = $13 AND household_id = $14
+      RETURNING *`,
+      [name, description, notes, url, sourceName, prepTimeMinutes, cookTimeMinutes, mainProtein, rating, easinessScore, healthScore, servingSize, mealId, householdId]
+    );
+
+    if (result.rows.length === 0) {
+      res.status(404).json({ error: "Meal not found" });
+      return;
+    }
+
+    res.json({ meal: toMeal(result.rows[0]) });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    console.error("Error updating meal:", err);
+    res.status(500).json({ error: "Failed to update meal", details: message });
+  }
+});
+
+// PUT /api/v1/meals/:id/ingredients
+// Update ingredients for a meal: update existing, insert new, delete removed
+router.put("/meals/:id/ingredients", authenticate, async (req: AuthRequest, res: Response) => {
+  const householdId = req.user!.householdId;
+  const mealId = Number(req.params.id);
+  const { ingredients } = req.body as { ingredients: ParsedIngredient[] };
+
+  try {
+    const mealCheck = await pool.query(
+      "SELECT id FROM meals WHERE id = $1 AND household_id = $2",
+      [mealId, householdId]
+    );
+    if (mealCheck.rows.length === 0) {
+      res.status(404).json({ error: "Meal not found" });
+      return;
+    }
+
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+
+      const incomingIds = ingredients.filter((ing) => ing.id).map((ing) => ing.id!);
+
+      // Delete ingredients that were removed
+      if (incomingIds.length > 0) {
+        await client.query(
+          "DELETE FROM ingredients WHERE meal_id = $1 AND id != ALL($2)",
+          [mealId, incomingIds]
+        );
+      } else {
+        await client.query("DELETE FROM ingredients WHERE meal_id = $1", [mealId]);
+      }
+
+      const resultIngredients: ParsedIngredient[] = [];
+
+      for (const ing of ingredients) {
+        if (ing.id) {
+          // Update existing
+          const result = await client.query(
+            `UPDATE ingredients SET name = $1, quantity = $2, measurement_unit = $3, optional = $4, notes = $5
+             WHERE id = $6 AND meal_id = $7 RETURNING id`,
+            [ing.name, ing.quantity, ing.measurementUnit, ing.optional, ing.notes, ing.id, mealId]
+          );
+          resultIngredients.push({ ...ing, id: result.rows[0]?.id ?? ing.id });
+        } else {
+          // Insert new
+          const result = await client.query(
+            `INSERT INTO ingredients (meal_id, name, quantity, measurement_unit, optional, notes)
+             VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+            [mealId, ing.name, ing.quantity, ing.measurementUnit, ing.optional, ing.notes]
+          );
+          resultIngredients.push({ ...ing, id: result.rows[0].id });
+        }
+      }
+
+      await client.query("COMMIT");
+      res.json({ ingredients: resultIngredients });
+    } catch (err) {
+      await client.query("ROLLBACK");
+      throw err;
+    } finally {
+      client.release();
+    }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    console.error("Error updating ingredients:", err);
+    res.status(500).json({ error: "Failed to update ingredients", details: message });
   }
 });
 

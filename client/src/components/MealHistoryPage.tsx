@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { MealSelection } from "../../../src/types";
 import { apiFetch } from "../api";
 import AppHeader from "./AppHeader";
+import styles from "./MealHistoryPage.module.css";
 
 interface WeekGroup {
   weekStart: string;
@@ -64,24 +65,24 @@ export default function MealHistoryPage({ onLogout }: { onLogout: () => void }) 
         const expanded = expandedWeeks.has(week.weekStart);
         return (
           <React.Fragment key={week.weekStart}>
-            {showYear && <h2 className="history-year">{year}</h2>}
-            <div className="history-week">
-              <button className="history-week-header" onClick={() => toggleWeek(week.weekStart)}>
+            {showYear && <h2 className={styles.year}>{year}</h2>}
+            <div className={styles.week}>
+              <button className={styles.weekHeader} onClick={() => toggleWeek(week.weekStart)}>
                 <span className={`caret ${expanded ? "caret-open" : ""}`}>&#9654;</span>
-                <span className="week-label">{formatWeekLabel(week.weekStart)}</span>
-                <span className="week-count">{week.meals.length} meal{week.meals.length !== 1 ? "s" : ""}</span>
+                <span className={styles.weekLabel}>{formatWeekLabel(week.weekStart)}</span>
+                <span className={styles.weekCount}>{week.meals.length} meal{week.meals.length !== 1 ? "s" : ""}</span>
               </button>
               {expanded && (
-                <ul className="history-meal-list">
+                <ul className={styles.mealList}>
                   {week.meals.map((meal) => (
-                    <li key={meal.foodSelectionId} className="history-meal-item">
+                    <li key={meal.foodSelectionId} className={styles.mealItem}>
                       <strong>{meal.name}</strong>
                       {meal.servingSizeMultiplier > 1 && (
-                        <span className="history-meal-multiplier"> ({meal.servingSizeMultiplier}x)</span>
+                        <span className={styles.mealMultiplier}> ({meal.servingSizeMultiplier}x)</span>
                       )}
-                      {meal.description && <span className="history-meal-desc"> — {meal.description}</span>}
+                      {meal.description && <span className={styles.mealDesc}> — {meal.description}</span>}
                       {meal.url && (
-                        <a href={meal.url} target="_blank" rel="noopener noreferrer" className="history-meal-link">
+                        <a href={meal.url} target="_blank" rel="noopener noreferrer" className={styles.mealLink}>
                           View recipe
                         </a>
                       )}

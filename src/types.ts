@@ -52,6 +52,15 @@ export interface Household {
   inviteCode: string;
 }
 
+export interface HouseholdSettings {
+  lookbackWeeks: number;
+  ratingWeight: number;
+  easinessWeight: number;
+  healthWeight: number;
+  preferredProteins: Protein[];
+  defaultMealCount: number;
+}
+
 export interface AuthResponse {
   user: { id: number; email: string };
   household: Household;
@@ -86,6 +95,7 @@ export interface StapleSelection extends FoodStaple {
 }
 
 export interface ParsedIngredient {
+  id?: number;
   name: string;
   quantity: number;
   measurementUnit: MeasurementUnit;
@@ -97,8 +107,8 @@ export interface AggregatedIngredient {
   name: string;
   quantity: number;
   measurementUnit: MeasurementUnit;
-  sources: string[];
   optional: boolean;
+  notes: string[];
 }
 
 export interface ParsedRecipe {

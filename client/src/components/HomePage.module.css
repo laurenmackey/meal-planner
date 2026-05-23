@@ -1,0 +1,104 @@
+.controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.countInput {
+  width: 60px;
+  padding: 8px 12px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.mealsHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 36px;
+  margin-bottom: 24px;
+}
+
+.mealsHeader h2 {
+  margin: 0;
+  font-family: 'Libre Baskerville', serif;
+  color: #444;
+}
+
+.rejectButton {
+  padding: 4px 12px;
+  background-color: #fff;
+  color: #c1121f;
+  border: 1px solid #c1121f;
+  border-radius: 4px;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.includeAllLink {
+  color: #666;
+  font-size: 13px;
+  margin-top: 8px;
+  display: inline-block;
+  cursor: pointer;
+  padding: 4px 10px;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  text-decoration: none;
+}
+
+.ingredientsSection {
+  margin-top: 32px;
+  padding-top: 16px;
+  border-top: 1px solid #eee;
+}
+
+.ingredientsHeading {
+  font-family: 'Libre Baskerville', serif;
+  color: #444;
+  margin: 0 0 16px;
+}
+
+.ingredientDetail {
+  flex: 1;
+  min-width: 0;
+  padding-top: 6px;
+}
+
+.ingredientName {
+  font-weight: 500;
+}
+
+.ingredientNotes {
+  color: #888;
+  font-size: 13px;
+  font-style: italic;
+}
+
+.optionalTag {
+  color: #999;
+  font-weight: normal;
+  font-style: italic;
+}
+
+.extraItems {
+  margin-top: 8px;
+}
+
+.addItemRow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 12px;
+}
+
+.extraItemName {
+  flex: 1;
+  font-size: 14px;
+  padding: 4px 0;
+}

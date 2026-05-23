@@ -1,7 +1,7 @@
 import cron from "node-cron";
 import { Resend } from "resend";
 import pool from "../db";
-import { chooseWeeklyMeals, DEFAULT_MEAL_COUNT } from "../services/mealSelection";
+import { chooseWeeklyMeals } from "../services/mealSelection";
 import { chooseWeeklyStaples } from "../services/stapleSelection";
 import { MealSelection } from "../types";
 import { toMeal } from "../mappers";
@@ -10,7 +10,11 @@ const APP_URL = process.env.APP_URL || "http://localhost:3000";
 const EMAIL_FROM = process.env.EMAIL_FROM || "Meal Planner <onboarding@resend.dev>";
 
 function getResend() {
-  return new Resend(process.env.RESEND_API_KEY);
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    console.error("RESEND_API_KEY is not set. Available env vars:", Object.keys(process.env).filter(k => k.startsWith("RESEND") || k.startsWith("NODE")).join(", "));
+  }
+  return new Resend(apiKey);
 }
 
 function buildEmailHtml(meals: MealSelection[]): string {
@@ -76,7 +80,7 @@ async function runWeeklyMealJob() {
     for (const household of households.rows) {
       const householdId = household.id;
 
-      await chooseWeeklyMeals(householdId, DEFAULT_MEAL_COUNT);
+      await chooseWeeklyMeals(householdId);
       await chooseWeeklyStaples(householdId);
 
       // Fetch all this week's meals for the email (don't show staples in email)
