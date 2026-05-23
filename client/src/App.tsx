@@ -3,6 +3,7 @@ import { Routes, Route } from "react-router-dom";
 import { MealSelection, StapleSelection, AggregatedIngredient, MEASUREMENT_UNITS } from "../../src/types";
 import MealCard from "./components/MealCard";
 import AuthPage from "./components/AuthPage";
+import GoogleSetupPage from "./components/GoogleSetupPage";
 import MealHistoryPage from "./components/MealHistoryPage";
 import RecipesPage from "./components/RecipesPage";
 import SettingsPage from "./components/SettingsPage";
@@ -17,8 +18,18 @@ const DEFAULT_COUNT = "3";
 
 export default function App() {
   const [authed, setAuthed] = useState<boolean | null>(null);
+  const [googleSetup, setGoogleSetup] = useState(false);
 
   useEffect(() => {
+    // Check for Google setup redirect
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("google_setup") === "true") {
+      setGoogleSetup(true);
+      setAuthed(false);
+      window.history.replaceState({}, "", window.location.pathname);
+      return;
+    }
+
     const checkAuth = async () => {
       try {
         const res = await apiFetch("/api/v1/me");
@@ -31,6 +42,10 @@ export default function App() {
   }, []);
 
   if (authed === null) return null;
+
+  if (googleSetup) {
+    return <GoogleSetupPage onComplete={() => window.location.reload()} />;
+  }
 
   if (!authed) {
     return <AuthPage onAuth={() => setAuthed(true)} />;
