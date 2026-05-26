@@ -112,16 +112,10 @@ I'd like to build a meal planner app to help automate the work of:
 
 - Login: can you login with google oauth now that we have that set up for google calendar? Only worth adding if it's straightforward
 
-### Milestone 8 - Recipes and Ingredients from Recipe Pictures and Other Sources
+### Milestone 8 - Recipes and Ingredients from Recipe Pictures
 - Can we integrate with claude agent to do this for us?
-- Can we run a weekly job to scrape NY Times Cooking and suggest new recipes we might like?
 
-### Milestone 9 - Add real data to prod db
-
-### Milestone 10 - Save from chatgpt
-- Can we ask chatgpt to save the recipe it just generated to our db so we can use it going forward?
-
-### Milestone 11 - Resend custom domain and email cleanup
+### Milestone 9 - Resend custom domain and email cleanup
 - Set up custom domain on Resend so the weekly email will send to Spencer along with me
 - Remove logic related to RESEND_ALLOWED_EMAILS
 - Make sure email flow makes sense - Do you then still have to manually generate the ingredients or can you just do it automatically from email once meals are accepted?
@@ -132,9 +126,14 @@ I'd like to build a meal planner app to help automate the work of:
     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
     at async Timeout._onTimeout (/app/node_modules/node-cron/dist/cjs/scheduler/runner.js:70:44)
 
-### Milestone 12 - Agentic Interactions
-- TBD - would this be useful?
-- Instead of clicking buttons in the UI to regenerate/edit quantities/etc, can we have more of a text-based interaction with an agent interface to adjust the meals?
+### Milestone 10 - Add real data to prod db
 
-### Milestone 13 - Tests
+### Milestone 11 - Save from chatgpt
+- Can we ask chatgpt to save the recipe it just generated to our db so we can use it going forward?
+
+### Milestone 12 - Tests
 - Add core unit and integration tests
+
+### Potential future features:
+1. Scraping sites like NYT Cooking to recommend new recipes to add to the db. Claude could score recipes against our preferences and recommend new ones to add.
+2. Agentic interactions (TBD how useful this would be). Instead of clicking buttons in the UI to regenerate/edit quantities/etc, can we have more of a text-based interaction with an agent interface to adjust the meals OR to find new meals to add?
