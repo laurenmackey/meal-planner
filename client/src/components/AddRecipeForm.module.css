@@ -13,6 +13,64 @@
   font-family: inherit;
 }
 
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  color: #999;
+  font-size: 13px;
+}
+
+.divider::before,
+.divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background-color: #ddd;
+}
+
+.imageUpload {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.imageLabel {
+  flex: 1;
+  cursor: pointer;
+}
+
+.imageInput {
+  display: none;
+}
+
+.imageLabelText {
+  display: block;
+  padding: 8px 12px;
+  border: 1px dashed #ccc;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #666;
+  text-align: center;
+}
+
+.imageLabelText:hover {
+  border-color: #2d6a4f;
+  color: #2d6a4f;
+}
+
+.duplicateWarning {
+  background-color: #f8d7da;
+  border: 1px solid #f5c2c7;
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-size: 14px;
+  color: #842029;
+  margin-bottom: 12px;
+}
+
 .parsedRecipe {
   border: 1px solid #ddd;
   border-radius: 8px;

@@ -7,9 +7,40 @@ interface AddRecipeFormProps {
   onSaved: () => void;
 }
 
+const MAX_IMAGE_DIMENSION = 1568;
+
+function resizeImage(file: File): Promise<{ data: string; mediaType: string }> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > MAX_IMAGE_DIMENSION || height > MAX_IMAGE_DIMENSION) {
+          const scale = MAX_IMAGE_DIMENSION / Math.max(width, height);
+          width = Math.round(width * scale);
+          height = Math.round(height * scale);
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d")!;
+        ctx.drawImage(img, 0, 0, width, height);
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+        const base64 = dataUrl.split(",")[1];
+        resolve({ data: base64, mediaType: "image/jpeg" });
+      };
+      img.onerror = () => reject(new Error("Failed to load image"));
+      img.src = reader.result as string;
+    };
+    reader.onerror = () => reject(new Error("Failed to read file"));
+    reader.readAsDataURL(file);
+  });
+}
+
 export default function AddRecipeForm({ onSaved }: AddRecipeFormProps) {
   const [url, setUrl] = useState("");
-  const [parsing, setParsing] = useState(false);
+  const [parsing, setParsing] = useState<"url" | "pasted" | "image" | false>(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [recipe, setRecipe] = useState<ParsedRecipe | null>(null);
@@ -20,9 +51,23 @@ export default function AddRecipeForm({ onSaved }: AddRecipeFormProps) {
   const [editing, setEditing] = useState(false);
   const [showPasteFallback, setShowPasteFallback] = useState(false);
   const [pastedText, setPastedText] = useState("");
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
 
-  const parseWithBody = async (body: Record<string, string>) => {
-    setParsing(true);
+  const checkDuplicate = async (name: string) => {
+    try {
+      const res = await apiFetch(`/api/v1/checkRecipeName?name=${encodeURIComponent(name)}`);
+      const data = await res.json();
+      if (data.exists) {
+        setDuplicateWarning(`A recipe named "${data.matchedName}" already exists. If this is a different recipe, change the name before saving.`);
+      } else {
+        setDuplicateWarning(null);
+      }
+    } catch {}
+  };
+
+  const parseWithBody = async (body: Record<string, string>, source: "url" | "pasted") => {
+    setParsing(source);
     setError(null);
     setRecipe(null);
     try {
@@ -43,6 +88,7 @@ export default function AddRecipeForm({ onSaved }: AddRecipeFormProps) {
       }
       setRecipe(data);
       setShowPasteFallback(false);
+      checkDuplicate(data.name);
     } catch {
       setError("Failed to connect to server");
     } finally {
@@ -52,17 +98,50 @@ export default function AddRecipeForm({ onSaved }: AddRecipeFormProps) {
 
   const handleParse = async (e: React.FormEvent) => {
     e.preventDefault();
-    await parseWithBody({ url });
+    await parseWithBody({ url }, "url");
   };
 
   const handleParsePasted = async () => {
     if (!pastedText.trim()) return;
-    await parseWithBody({ url, text: pastedText });
+    await parseWithBody({ url, text: pastedText }, "pasted");
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    setImageFiles(files);
+  };
+
+  const handleParseImages = async () => {
+    if (imageFiles.length === 0) return;
+    setParsing("image");
+    setError(null);
+    setRecipe(null);
+    try {
+      const images = await Promise.all(imageFiles.map(resizeImage));
+      const res = await apiFetch("/api/v1/parseRecipeImage", {
+        method: "POST",
+        body: JSON.stringify({ images }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.details || data.error || "Failed to parse recipe from image");
+        return;
+      }
+      setRecipe(data);
+      checkDuplicate(data.name);
+    } catch {
+      setError("Failed to connect to server");
+    } finally {
+      setParsing(false);
+    }
   };
 
   const updateRecipe = (updates: Partial<ParsedRecipe>) => {
     if (!recipe) return;
     setRecipe({ ...recipe, ...updates });
+    if (updates.name !== undefined) {
+      checkDuplicate(updates.name);
+    }
   };
 
   const updateIngredient = (index: number, updates: Partial<ParsedIngredient>) => {
@@ -107,6 +186,8 @@ export default function AddRecipeForm({ onSaved }: AddRecipeFormProps) {
       setEditing(false);
       setShowPasteFallback(false);
       setPastedText("");
+      setImageFiles([]);
+      setDuplicateWarning(null);
       onSaved();
     } catch {
       setError("Failed to connect to server");
@@ -124,12 +205,36 @@ export default function AddRecipeForm({ onSaved }: AddRecipeFormProps) {
           placeholder="Paste recipe URL..."
           value={url}
           onChange={(e) => setUrl(e.target.value)}
-          required
         />
-        <button className="generate-button" type="submit" disabled={parsing || !url || !!recipe}>
-          {parsing ? "Parsing..." : "Parse Recipe"}
+        <button className="generate-button" type="submit" disabled={!!parsing || !url || !!recipe}>
+          {parsing === "url" ? "Parsing..." : "Parse URL"}
         </button>
       </form>
+
+      <div className={styles.divider}><span>or</span></div>
+
+      <div className={styles.imageUpload}>
+        <label className={styles.imageLabel}>
+          <input
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={handleImageChange}
+            className={styles.imageInput}
+            disabled={!!parsing || !!recipe}
+          />
+          <span className={styles.imageLabelText}>
+            {imageFiles.length > 0
+              ? `${imageFiles.length} photo${imageFiles.length > 1 ? "s" : ""} selected`
+              : "Upload recipe photos"}
+          </span>
+        </label>
+        {imageFiles.length > 0 && !recipe && (
+          <button className="generate-button" onClick={handleParseImages} disabled={!!parsing}>
+            {parsing === "image" ? "Parsing..." : "Parse from Photos"}
+          </button>
+        )}
+      </div>
 
       {error && (
         <div className="error-toast">
@@ -150,15 +255,18 @@ export default function AddRecipeForm({ onSaved }: AddRecipeFormProps) {
           <button
             className="generate-button"
             onClick={handleParsePasted}
-            disabled={parsing || !pastedText.trim()}
+            disabled={!!parsing || !pastedText.trim()}
           >
-            {parsing ? "Parsing..." : "Parse Pasted Text"}
+            {parsing === "pasted" ? "Parsing..." : "Parse Pasted Text"}
           </button>
         </div>
       )}
 
       {recipe && (
         <div className={styles.parsedRecipe}>
+          {duplicateWarning && (
+            <div className={styles.duplicateWarning}>{duplicateWarning}</div>
+          )}
           {!editing ? (
             <>
               <div className="recipe-header-row">
@@ -166,9 +274,11 @@ export default function AddRecipeForm({ onSaved }: AddRecipeFormProps) {
                 <button className="back-button" onClick={() => setEditing(true)}>Edit</button>
               </div>
               {recipe.description && <p className="recipe-description">{recipe.description}</p>}
-              <a href={recipe.url} target="_blank" rel="noopener noreferrer" className="recipe-link">
-                View original recipe
-              </a>
+              {recipe.url && (
+                <a href={recipe.url} target="_blank" rel="noopener noreferrer" className="recipe-link">
+                  View original recipe
+                </a>
+              )}
 
               <div className="recipe-meta">
                 {recipe.sourceName && <span>Source: {recipe.sourceName}</span>}
@@ -196,9 +306,11 @@ export default function AddRecipeForm({ onSaved }: AddRecipeFormProps) {
                 <h3>Edit Recipe</h3>
                 <button className="back-button" onClick={() => setEditing(false)}>Done</button>
               </div>
-              <a href={recipe.url} target="_blank" rel="noopener noreferrer" className="recipe-link">
-                View original recipe
-              </a>
+              {recipe.url && (
+                <a href={recipe.url} target="_blank" rel="noopener noreferrer" className="recipe-link">
+                  View original recipe
+                </a>
+              )}
 
               <div className="edit-section">
                 <label>
@@ -268,8 +380,9 @@ export default function AddRecipeForm({ onSaved }: AddRecipeFormProps) {
                       className="edit-input-sm"
                       type="number"
                       min="1"
-                      value={recipe.servingSize}
-                      onChange={(e) => updateRecipe({ servingSize: Number(e.target.value) })}
+                      key={recipe.servingSize}
+                      defaultValue={recipe.servingSize}
+                      onBlur={(e) => updateRecipe({ servingSize: Number(e.target.value) || 1 })}
                     />
                   </label>
                 </div>
@@ -278,44 +391,46 @@ export default function AddRecipeForm({ onSaved }: AddRecipeFormProps) {
               <h3>Ingredients</h3>
               <div className="ingredient-edit-list">
                 {recipe.ingredients.map((ing, i) => (
-                  <div key={i} className="ingredient-edit-row">
+                  <div key={i} className="ingredient-edit-item">
+                    <div className="ingredient-edit-row">
+                      <input
+                        className="edit-input-sm"
+                        type="number"
+                        step="any"
+                        min="0"
+                        defaultValue={ing.quantity}
+                        onBlur={(e) => updateIngredient(i, { quantity: Number(e.target.value) || 0 })}
+                      />
+                      <select
+                        className="edit-select"
+                        value={ing.measurementUnit}
+                        onChange={(e) => updateIngredient(i, { measurementUnit: e.target.value as ParsedIngredient["measurementUnit"] })}
+                      >
+                        {MEASUREMENT_UNITS.map((u) => (
+                          <option key={u} value={u}>{u}</option>
+                        ))}
+                      </select>
+                      <input
+                        className="edit-input"
+                        value={ing.name}
+                        onChange={(e) => updateIngredient(i, { name: e.target.value })}
+                      />
+                      <label className="optional-check">
+                        <input
+                          type="checkbox"
+                          checked={ing.optional}
+                          onChange={(e) => updateIngredient(i, { optional: e.target.checked })}
+                        />
+                        opt
+                      </label>
+                      <button className="remove-ingredient" onClick={() => removeIngredient(i)}>x</button>
+                    </div>
                     <input
-                      className="edit-input-sm"
-                      type="number"
-                      step="any"
-                      min="0"
-                      defaultValue={ing.quantity}
-                      onBlur={(e) => updateIngredient(i, { quantity: Number(e.target.value) || 0 })}
-                    />
-                    <select
-                      className="edit-select"
-                      value={ing.measurementUnit}
-                      onChange={(e) => updateIngredient(i, { measurementUnit: e.target.value as ParsedIngredient["measurementUnit"] })}
-                    >
-                      {MEASUREMENT_UNITS.map((u) => (
-                        <option key={u} value={u}>{u}</option>
-                      ))}
-                    </select>
-                    <input
-                      className="edit-input"
-                      value={ing.name}
-                      onChange={(e) => updateIngredient(i, { name: e.target.value })}
-                    />
-                    <input
-                      className="edit-input"
+                      className="edit-input ingredient-notes-input"
                       placeholder="notes"
                       value={ing.notes || ""}
                       onChange={(e) => updateIngredient(i, { notes: e.target.value || null })}
                     />
-                    <label className="optional-check">
-                      <input
-                        type="checkbox"
-                        checked={ing.optional}
-                        onChange={(e) => updateIngredient(i, { optional: e.target.checked })}
-                      />
-                      opt
-                    </label>
-                    <button className="remove-ingredient" onClick={() => removeIngredient(i)}>x</button>
                   </div>
                 ))}
               </div>
@@ -348,7 +463,7 @@ export default function AddRecipeForm({ onSaved }: AddRecipeFormProps) {
                 rows={3}
               />
             </label>
-            <button className={`${'generate-button'} ${styles.saveButton}`} onClick={handleSave} disabled={saving}>
+            <button className={`${'generate-button'} ${styles.saveButton}`} onClick={handleSave} disabled={saving || !!duplicateWarning || !recipe?.name?.trim()}>
               {saving ? "Saving..." : "Save Recipe"}
             </button>
           </div>
