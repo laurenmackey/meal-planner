@@ -12,7 +12,7 @@ const EMAIL_FROM = process.env.EMAIL_FROM || "Meal Planner <onboarding@resend.de
 function getResend() {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
-    console.error("RESEND_API_KEY is not set. All env var keys:", Object.keys(process.env).join(", "));
+    console.error("RESEND_API_KEY is not set");
   }
   return new Resend(apiKey);
 }
