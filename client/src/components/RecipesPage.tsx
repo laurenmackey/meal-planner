@@ -337,7 +337,7 @@ export default function RecipesPage({ onLogout }: { onLogout: () => void }) {
                           </label>
                           <label>
                             Serves
-                            <input className="edit-input-sm" type="number" min="1" value={editValues.servingSize ?? ""} onChange={(e) => setEditValues({ ...editValues, servingSize: Number(e.target.value) })} />
+                            <input className="edit-input-sm" type="number" min="1" key={editValues.servingSize} defaultValue={editValues.servingSize ?? ""} onBlur={(e) => setEditValues({ ...editValues, servingSize: Number(e.target.value) || 1 })} />
                           </label>
                         </div>
                         <div className="edit-row">

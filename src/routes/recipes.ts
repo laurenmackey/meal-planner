@@ -27,6 +27,20 @@ async function fetchRecipePage(url: string): Promise<string> {
   return res.text();
 }
 
+function extractRecipeJson(response: Anthropic.Message): ParsedRecipe {
+  const text = response.content[0].type === "text" ? response.content[0].text : "";
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) {
+    throw new Error("Failed to parse recipe: no JSON in response");
+  }
+  const parsed = JSON.parse(jsonMatch[0]);
+  return {
+    ...parsed,
+    url: parsed.url || null,
+    sourceName: parsed.sourceName || null,
+  };
+}
+
 async function parseRecipeWithClaude(html: string, url: string): Promise<ParsedRecipe> {
   const response = await anthropic.messages.create({
     model: "claude-haiku-4-5-20251001",
@@ -34,7 +48,49 @@ async function parseRecipeWithClaude(html: string, url: string): Promise<ParsedR
     messages: [
       {
         role: "user",
-        content: `Parse this recipe page HTML and extract the recipe data. Return ONLY valid JSON with no other text.
+        content: `${RECIPE_PARSE_PROMPT}\n\nHere is the HTML:\n\n${html.substring(0, 50000)}`,
+      },
+    ],
+  });
+
+  const recipe = extractRecipeJson(response);
+  return { ...recipe, url };
+}
+
+const IMAGE_MEDIA_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"] as const;
+type ImageMediaType = typeof IMAGE_MEDIA_TYPES[number];
+
+async function parseRecipeFromImages(images: { data: string; mediaType: ImageMediaType }[]): Promise<ParsedRecipe> {
+  const imageBlocks: Anthropic.ImageBlockParam[] = images.map((img) => ({
+    type: "image",
+    source: {
+      type: "base64",
+      media_type: img.mediaType,
+      data: img.data,
+    },
+  }));
+
+  const response = await anthropic.messages.create({
+    model: "claude-haiku-4-5-20251001",
+    max_tokens: 2000,
+    messages: [
+      {
+        role: "user",
+        content: [
+          ...imageBlocks,
+          {
+            type: "text",
+            text: `${RECIPE_PARSE_PROMPT}\n\nThe recipe is shown in the image(s) above. If there are multiple images, they are pages of the same recipe.`,
+          },
+        ],
+      },
+    ],
+  });
+
+  return extractRecipeJson(response);
+}
+
+const RECIPE_PARSE_PROMPT = `Parse this recipe and extract the recipe data. Return ONLY valid JSON with no other text.
 
 The JSON must match this exact structure:
 {
@@ -84,28 +140,7 @@ Important rules for standardization:
 - mainProtein should be "none" if the recipe is vegetarian/vegan or the protein doesn't match the list
 - Only set optional to true if the recipe explicitly says "optional". An ingredient with a substitution (e.g. "ancho chile, or use chile powder instead") is NOT optional — it's required, with the substitution noted in notes
 - Put preparation details (diced, minced, chopped, etc.) in notes, not in the name
-- If the recipe says "ground lamb", the ingredient name should be "lamb" with "ground" in notes
-
-Here is the HTML:
-
-${html.substring(0, 50000)}`,
-      },
-    ],
-  });
-
-  const text = response.content[0].type === "text" ? response.content[0].text : "";
-  const jsonMatch = text.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) {
-    throw new Error("Failed to parse recipe: no JSON in response");
-  }
-
-  const parsed = JSON.parse(jsonMatch[0]);
-  return {
-    ...parsed,
-    url,
-    sourceName: parsed.sourceName || null,
-  };
-}
+- If the recipe says "ground lamb", the ingredient name should be "lamb" with "ground" in notes`;
 
 // POST /api/v1/parseRecipe
 // Body: { url: string, text?: string }
@@ -137,6 +172,52 @@ router.post("/parseRecipe", authenticate, async (req: AuthRequest, res: Response
     console.error("Error parsing recipe:", err);
     res.status(500).json({ error: "Failed to parse recipe", details: message });
   }
+});
+
+// POST /api/v1/parseRecipeImage
+// Body: { images: Array<{ data: string (base64), mediaType: string }> }
+router.post("/parseRecipeImage", authenticate, async (req: AuthRequest, res: Response) => {
+  const { images } = req.body;
+
+  if (!Array.isArray(images) || images.length === 0) {
+    res.status(400).json({ error: "At least one image is required" });
+    return;
+  }
+
+  if (images.length > 5) {
+    res.status(400).json({ error: "Maximum 5 images allowed" });
+    return;
+  }
+
+  for (const img of images) {
+    if (!img.data || !IMAGE_MEDIA_TYPES.includes(img.mediaType)) {
+      res.status(400).json({ error: `Invalid image. Supported types: ${IMAGE_MEDIA_TYPES.join(", ")}` });
+      return;
+    }
+  }
+
+  try {
+    const recipe = await parseRecipeFromImages(images);
+    res.json(recipe);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    console.error("Error parsing recipe from image:", err);
+    res.status(500).json({ error: "Failed to parse recipe from image", details: message });
+  }
+});
+
+// GET /api/v1/checkRecipeName?name=...
+router.get("/checkRecipeName", authenticate, async (req: AuthRequest, res: Response) => {
+  const name = req.query.name as string;
+  if (!name) {
+    res.json({ exists: false });
+    return;
+  }
+  const result = await pool.query(
+    "SELECT id, name FROM meals WHERE LOWER(name) = LOWER($1) AND household_id = $2",
+    [name.trim(), req.user!.householdId]
+  );
+  res.json({ exists: result.rows.length > 0, matchedName: result.rows[0]?.name || null });
 });
 
 // POST /api/v1/saveRecipe
