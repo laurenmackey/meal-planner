@@ -58,7 +58,6 @@ Edit `.env` with your values:
 | `ANTHROPIC_API_KEY` | Claude API key for recipe parsing | Yes |
 | `NYT_COOKING_COOKIE` | Cookie for fetching NYT Cooking recipes | Optional |
 | `RESEND_API_KEY` | Resend API key for weekly emails | Yes |
-| `RESEND_ALLOWED_EMAILS` | Comma-separated list of allowed recipients (for Resend free tier without custom domain) | Optional |
 | `APP_URL` | Public URL of the app (used in email links) | Yes (prod) |
 
 3. **Create the database and run migrations:**
@@ -109,8 +108,6 @@ Add recipes by pasting a URL — the app fetches the page and uses Claude to ext
 
 ### Weekly Email (Cron)
 A cron job runs every Friday at 5pm PT, generates meal suggestions for each household, and emails the results via Resend. The email includes meal names, descriptions, recipe links, and a link to the app.
-
-**Resend free tier note:** Without a custom domain, Resend only allows sending to the email you signed up with. Set `RESEND_ALLOWED_EMAILS` to filter recipients. Once you add a custom domain in Resend, remove this variable to send to all household members.
 
 **Testing the email manually:**
 ```bash

@@ -12,7 +12,7 @@ const EMAIL_FROM = process.env.EMAIL_FROM || "Meal Planner <onboarding@resend.de
 function getResend() {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
-    console.error("RESEND_API_KEY is not set. All env var keys:", Object.keys(process.env).join(", "));
+    console.error("RESEND_API_KEY is not set");
   }
   return new Resend(apiKey);
 }
@@ -107,17 +107,9 @@ async function runWeeklyMealJob() {
 
       const html = buildEmailHtml(meals);
 
-      // Without a custom domain, Resend only allows sending to the account owner's email.
-      // Filter to allowed recipients until a domain is configured.
-      const allowedEmails = process.env.RESEND_ALLOWED_EMAILS
-        ? process.env.RESEND_ALLOWED_EMAILS.split(",").map((e) => e.trim())
-        : emails;
-      const recipients = emails.filter((e) => allowedEmails.includes(e));
-      if (recipients.length === 0) continue;
-
       const result = await getResend().emails.send({
         from: EMAIL_FROM,
-        to: recipients,
+        to: emails,
         subject: `🍽️ Your Weekly Meal Suggestions (${meals.length} meals)`,
         html,
       });
