@@ -35,7 +35,7 @@ export default function MealCard({ meal, multiplier, onReject, onMultiplierChang
               <>{" · "}<span>Protein: {meal.mainProtein}</span></>
             )}
             {" · "}
-            <span>Serves {meal.servingSize}</span>
+            <span>Serves {meal.servingSize * multiplier}</span>
           </div>
           <div className={styles.multiplier}>
             <label>

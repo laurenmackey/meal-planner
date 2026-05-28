@@ -37,15 +37,15 @@ function getNextDateForDay(dayOfWeek: number, index: number): string {
 
 interface GoogleCalendarProps {
   meals: MealSelection[];
-  onError: (msg: string) => void;
 }
 
-export default function GoogleCalendar({ meals, onError }: GoogleCalendarProps) {
+export default function GoogleCalendar({ meals }: GoogleCalendarProps) {
   const [connected, setConnected] = useState<boolean | null>(null);
   const [schedule, setSchedule] = useState<Array<{ mealName: string; date: string; startTime: string }>>([]);
   const [showSchedule, setShowSchedule] = useState(false);
   const [adding, setAdding] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [localError, setLocalError] = useState<string | null>(null);
   const [eventIds, setEventIds] = useState<string[]>([]);
   const [dirty, setDirty] = useState(false);
 
@@ -68,7 +68,7 @@ export default function GoogleCalendar({ meals, onError }: GoogleCalendarProps) 
       const data = await res.json();
       window.location.href = data.url;
     } catch {
-      onError("Failed to connect to Google Calendar");
+      setLocalError("Failed to connect to Google Calendar");
     }
   };
 
@@ -77,17 +77,18 @@ export default function GoogleCalendar({ meals, onError }: GoogleCalendarProps) 
       await apiFetch("/api/v1/google/disconnect", { method: "POST" });
       setConnected(false);
     } catch {
-      onError("Failed to disconnect Google Calendar");
+      setLocalError("Failed to disconnect Google Calendar");
     }
   };
 
   const openSchedule = () => {
     if (schedule.length === 0) {
       const days = getDefaultDays(meals.length);
+      const dates = days.map((d, i) => getNextDateForDay(d, i)).sort();
       setSchedule(meals.map((meal, i) => ({
         mealName: meal.name,
-        date: getNextDateForDay(days[i], i),
-        startTime: i < 7 ? "17:00" : "16:00",
+        date: dates[i],
+        startTime: "17:00",
       })));
     }
     setShowSchedule(true);
@@ -111,14 +112,15 @@ export default function GoogleCalendar({ meals, onError }: GoogleCalendarProps) 
       });
       const data = await res.json();
       if (!res.ok) {
-        onError(data.error || "Failed to add to calendar");
+        setLocalError(data.error || "Failed to add to calendar");
+        if (res.status === 401) setConnected(false);
         return;
       }
       setEventIds(data.eventIds);
       setSuccess(true);
       setDirty(false);
     } catch {
-      onError("Failed to connect to server");
+      setLocalError("Failed to connect to server");
     } finally {
       setAdding(false);
     }
@@ -134,6 +136,12 @@ export default function GoogleCalendar({ meals, onError }: GoogleCalendarProps) 
   return (
     <div className={styles.section}>
       <h2 className={styles.heading}>Google Calendar</h2>
+      {localError && (
+        <div className="error-toast" style={{ marginBottom: 12 }}>
+          <span>{localError}</span>
+          <button className="error-close" onClick={() => setLocalError(null)}>x</button>
+        </div>
+      )}
       {!connected ? (
         <button className="generate-button" onClick={connect}>
           Connect Google Calendar

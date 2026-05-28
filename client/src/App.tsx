@@ -326,14 +326,6 @@ function HomePage({ onLogout }: { onLogout: () => void }) {
             >
               {generatingIngredients ? "Generating..." : "Generate Ingredients"}
             </button>
-            {ingredients && (
-              <button
-                className="generate-button copy-list-button"
-                onClick={copyListToClipboard}
-              >
-                {copied ? "Copied!" : currentStaples.length > 0 ? "Copy Grocery List (incl. staples)" : "Copy Grocery List"}
-              </button>
-            )}
           </div>
         </div>
       )}
@@ -365,7 +357,12 @@ function HomePage({ onLogout }: { onLogout: () => void }) {
                     ))}
                   </select>
                   <div className={styles.ingredientDetail}>
-                    <span className={styles.ingredientName}>{ing.name}{ing.optional && <span className={styles.optionalTag}> (optional)</span>}</span>
+                    <input
+                      className="edit-input"
+                      value={ing.name}
+                      onChange={(e) => updateIngredient(i, { name: e.target.value })}
+                    />
+                    {ing.optional && <span className={styles.optionalTag}>(optional)</span>}
                     {ing.notes.length > 0 && (
                       <span className={styles.ingredientNotes}> — {ing.notes.join("; ")}</span>
                     )}
@@ -397,11 +394,19 @@ function HomePage({ onLogout }: { onLogout: () => void }) {
             />
             <button className="back-button" onClick={addExtraItem} disabled={!newItem.trim()}>Add</button>
           </div>
+
+          <button
+            className="generate-button copy-list-button"
+            onClick={copyListToClipboard}
+            style={{ marginTop: "16px" }}
+          >
+            {copied ? "Copied!" : currentStaples.length > 0 ? "Copy Grocery List (incl. staples)" : "Copy Grocery List"}
+          </button>
         </div>
       )}
       <WeeklyStaples onError={setError} onStaplesChange={setCurrentStaples} />
       {meals.length > 0 && (
-        <GoogleCalendar meals={meals} onError={setError} />
+        <GoogleCalendar meals={meals} />
       )}
     </div>
   );
