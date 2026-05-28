@@ -1,14 +1,33 @@
 import pool from "../db";
-import { MealSelection, HouseholdSettings } from "../types";
+import { Meal, MealSelection, HouseholdSettings } from "../types";
 import { toMeal } from "../mappers";
 
 const PROTEIN_VARIETY_BONUS = 2;
 const PREFERRED_PROTEIN_BONUS = 1;
 
+function rankMeals(meals: Meal[], settings: HouseholdSettings, usedProteins: Set<string | null>) {
+  return meals
+    .map((meal) => {
+      const varietyBonus = usedProteins.has(meal.mainProtein) ? 0 : PROTEIN_VARIETY_BONUS;
+      const preferredBonus =
+        meal.mainProtein && settings.preferredProteins.includes(meal.mainProtein) ? PREFERRED_PROTEIN_BONUS : 0;
+
+      const score =
+        meal.rating * settings.ratingWeight +
+        meal.easinessScore * settings.easinessWeight +
+        meal.healthScore * settings.healthWeight +
+        varietyBonus +
+        preferredBonus;
+
+      return { ...meal, score };
+    })
+    .sort((a, b) => b.score - a.score);
+}
+
 async function getHouseholdSettings(householdId: number): Promise<HouseholdSettings> {
   const result = await pool.query(
     `SELECT lookback_weeks, rating_weight, easiness_weight, health_weight,
-            preferred_proteins, default_meal_count
+            preferred_proteins, default_meal_count, basic_meal_count
      FROM households WHERE id = $1`,
     [householdId]
   );
@@ -23,6 +42,7 @@ async function getHouseholdSettings(householdId: number): Promise<HouseholdSetti
     healthWeight: Number(row.health_weight),
     preferredProteins: row.preferred_proteins,
     defaultMealCount: row.default_meal_count,
+    basicMealCount: row.basic_meal_count,
   };
 }
 
@@ -52,18 +72,30 @@ export async function chooseWeeklyMeals(
 
   if (needed === 0) return [];
 
+  // Exclude anything chosen or rejected this week
   const excludeCurrentQuery = `
     SELECT fs.meal_id
     FROM food_selections fs
     WHERE fs.meal_id IS NOT NULL
       AND fs.household_id = $1
       AND week_start_utc(fs.chosen_at) = week_start_utc(NOW())
-      AND fs.status != 'rejected'
   `;
-  const eligibleMealsResult = includeAll
+
+  // Fetch basic meals separately — no lookback, but exclude anything chosen or rejected this week
+  const basicMealsResult = await pool.query(
+    `SELECT m.* FROM meals m
+     WHERE m.household_id = $1
+       AND m.is_basic = TRUE
+       AND m.id NOT IN (${excludeCurrentQuery})`,
+    [householdId]
+  );
+
+  // Fetch non-basic meals with lookback restriction and exclude anything chosen or rejected this week
+  const regularMealsResult = includeAll
     ? await pool.query(
         `SELECT m.* FROM meals m
          WHERE m.household_id = $1
+           AND m.is_basic = FALSE
            AND m.id NOT IN (${excludeCurrentQuery})`,
         [householdId]
       )
@@ -71,6 +103,7 @@ export async function chooseWeeklyMeals(
         `SELECT m.*
          FROM meals m
          WHERE m.household_id = $1
+           AND m.is_basic = FALSE
            AND m.id NOT IN (
            SELECT fs.meal_id
            FROM food_selections fs
@@ -81,9 +114,10 @@ export async function chooseWeeklyMeals(
         [householdId]
       );
 
-  const eligible = eligibleMealsResult.rows.map(toMeal);
+  const basicEligible = basicMealsResult.rows.map(toMeal);
+  const regularEligible = regularMealsResult.rows.map(toMeal);
 
-  if (eligible.length === 0) {
+  if (basicEligible.length === 0 && regularEligible.length === 0) {
     return [];
   }
 
@@ -101,24 +135,39 @@ export async function chooseWeeklyMeals(
     thisWeekProteinsResult.rows.map((r) => r.main_protein)
   );
 
-  const ranked = eligible
-    .map((meal) => {
-      const varietyBonus = usedProteins.has(meal.mainProtein) ? 0 : PROTEIN_VARIETY_BONUS;
-      const preferredBonus =
-        meal.mainProtein && settings.preferredProteins.includes(meal.mainProtein) ? PREFERRED_PROTEIN_BONUS : 0;
+  const rankedBasic = rankMeals(basicEligible, settings, usedProteins);
+  const rankedRegular = rankMeals(regularEligible, settings, usedProteins);
 
-      const score =
-        meal.rating * settings.ratingWeight +
-        meal.easinessScore * settings.easinessWeight +
-        meal.healthScore * settings.healthWeight +
-        varietyBonus +
-        preferredBonus;
+  // Check how many basics are already chosen this week
+  const existingBasicResult = await pool.query(
+    `SELECT COUNT(*) FROM food_selections fs
+     JOIN meals m ON m.id = fs.meal_id
+     WHERE fs.household_id = $1 AND fs.meal_id IS NOT NULL
+       AND m.is_basic = TRUE
+       AND week_start_utc(fs.chosen_at) = week_start_utc(NOW())
+       AND fs.status != 'rejected'`,
+    [householdId]
+  );
+  const existingBasicCount = Number(existingBasicResult.rows[0].count);
 
-      return { ...meal, score };
-    })
-    .sort((a, b) => b.score - a.score);
+  // Only fill up to basicMealCount basics total (including already chosen ones)
+  const basicStillNeeded = Math.max(0, settings.basicMealCount - existingBasicCount);
+  const basicNeeded = Math.min(basicStillNeeded, needed, rankedBasic.length);
+  const regularNeeded = needed - basicNeeded;
 
-  const chosen = ranked.slice(0, needed);
+  const chosenBasic = rankedBasic.slice(0, basicNeeded);
+  const chosenRegular = rankedRegular.slice(0, regularNeeded);
+
+  // If we couldn't fill enough regular meals, try to fill from basics (and vice versa)
+  let chosen = [...chosenBasic, ...chosenRegular];
+  if (chosen.length < needed) {
+    const remaining = needed - chosen.length;
+    const chosenIds = new Set(chosen.map((m) => m.id));
+    const extras = [...rankedBasic, ...rankedRegular]
+      .filter((m) => !chosenIds.has(m.id))
+      .slice(0, remaining);
+    chosen = [...chosen, ...extras];
+  }
 
   const insertedSelections: MealSelection[] = [];
   for (const meal of chosen) {

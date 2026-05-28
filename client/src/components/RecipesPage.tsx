@@ -58,6 +58,7 @@ export default function RecipesPage({ onLogout }: { onLogout: () => void }) {
       easinessScore: meal.easinessScore,
       healthScore: meal.healthScore,
       servingSize: meal.servingSize,
+      isBasic: meal.isBasic,
     });
   };
 
@@ -187,7 +188,10 @@ export default function RecipesPage({ onLogout }: { onLogout: () => void }) {
               <div key={meal.id} className={styles.item}>
                 <div className={styles.itemHeader} onClick={() => toggleMeal(meal.id)}>
                   <span className={`caret ${expanded ? "caret-open" : ""}`}>&#9654;</span>
-                  <span className={styles.itemName}>{meal.name}</span>
+                  <span className={styles.itemName}>
+                    {meal.name}
+                    {meal.isBasic && <span className={styles.basicBadge}>Basic</span>}
+                  </span>
                 </div>
 
                 {expanded && (
@@ -354,6 +358,14 @@ export default function RecipesPage({ onLogout }: { onLogout: () => void }) {
                             <input className="edit-input-sm" type="number" min="1" max="10" value={editValues.healthScore ?? ""} onChange={(e) => setEditValues({ ...editValues, healthScore: Number(e.target.value) })} />
                           </label>
                         </div>
+                        <label className={styles.basicCheck}>
+                          <input
+                            type="checkbox"
+                            checked={editValues.isBasic || false}
+                            onChange={(e) => setEditValues({ ...editValues, isBasic: e.target.checked })}
+                          />
+                          Basic meal
+                        </label>
                         <div className="ingredients-buttons">
                           <button className="generate-button" onClick={() => saveEdits(meal.id)} disabled={saving}>
                             {saving ? "Saving..." : "Save"}

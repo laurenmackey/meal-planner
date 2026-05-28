@@ -14,7 +14,10 @@ export default function MealCard({ meal, multiplier, onReject, onMultiplierChang
     <div className={styles.card}>
       <div className={styles.content}>
         <div>
-          <h3 className={styles.name}>{meal.name}</h3>
+          <h3 className={styles.name}>
+            {meal.name}
+            {meal.isBasic && <span className={styles.basicBadge}>Basic</span>}
+          </h3>
           {meal.description && <p className={styles.description}>{meal.description}</p>}
           {meal.notes && <p className={styles.notes}>{meal.notes}</p>}
           {meal.url && (

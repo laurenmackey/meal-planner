@@ -18,6 +18,7 @@ export interface Meal {
   easinessScore: number;
   healthScore: number;
   servingSize: number;
+  isBasic: boolean;
 }
 
 export const SERVING_MULTIPLIERS = [1, 1.5, 2, 3] as const;
@@ -59,6 +60,7 @@ export interface HouseholdSettings {
   healthWeight: number;
   preferredProteins: Protein[];
   defaultMealCount: number;
+  basicMealCount: number;
 }
 
 export interface AuthResponse {

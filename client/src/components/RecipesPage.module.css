@@ -83,6 +83,27 @@
   color: #444;
 }
 
+.basicBadge {
+  font-size: 11px;
+  font-weight: 600;
+  background-color: #e9ecef;
+  color: #495057;
+  padding: 2px 8px;
+  border-radius: 10px;
+  margin-left: 8px;
+  white-space: nowrap;
+}
+
+.basicCheck {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: #555;
+  cursor: pointer;
+  margin-top: 8px;
+}
+
 .editButtons {
   display: flex;
   gap: 10px;

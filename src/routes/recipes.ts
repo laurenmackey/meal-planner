@@ -223,7 +223,7 @@ router.get("/checkRecipeName", authenticate, async (req: AuthRequest, res: Respo
 // POST /api/v1/saveRecipe
 // Body: ParsedRecipe + { rating, easinessScore, healthScore }
 router.post("/saveRecipe", authenticate, async (req: AuthRequest, res: Response) => {
-  const { name, url, sourceName, description, notes, prepTimeMinutes, cookTimeMinutes, mainProtein, servingSize, ingredients, rating, easinessScore, healthScore } = req.body;
+  const { name, url, sourceName, description, notes, prepTimeMinutes, cookTimeMinutes, mainProtein, servingSize, ingredients, rating, easinessScore, healthScore, isBasic } = req.body;
   const householdId = req.user!.householdId;
 
   if (!name || !rating || !easinessScore || !healthScore || !servingSize) {
@@ -236,10 +236,10 @@ router.post("/saveRecipe", authenticate, async (req: AuthRequest, res: Response)
     await client.query("BEGIN");
 
     const mealResult = await client.query(
-      `INSERT INTO meals (name, url, source_name, description, notes, prep_time_minutes, cook_time_minutes, main_protein, rating, easiness_score, health_score, serving_size, household_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+      `INSERT INTO meals (name, url, source_name, description, notes, prep_time_minutes, cook_time_minutes, main_protein, rating, easiness_score, health_score, serving_size, household_id, is_basic)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
        RETURNING id`,
-      [name, url || null, sourceName || null, description || null, notes || null, prepTimeMinutes || null, cookTimeMinutes || null, mainProtein || "none", rating, easinessScore, healthScore, servingSize, householdId]
+      [name, url || null, sourceName || null, description || null, notes || null, prepTimeMinutes || null, cookTimeMinutes || null, mainProtein || "none", rating, easinessScore, healthScore, servingSize, householdId, isBasic || false]
     );
 
     const mealId = mealResult.rows[0].id;
@@ -323,7 +323,7 @@ router.get("/allMeals", authenticate, async (req: AuthRequest, res: Response) =>
 router.put("/meals/:id", authenticate, async (req: AuthRequest, res: Response) => {
   const householdId = req.user!.householdId;
   const mealId = Number(req.params.id);
-  const { name, description, notes, url, sourceName, prepTimeMinutes, cookTimeMinutes, mainProtein, rating, easinessScore, healthScore, servingSize } = req.body;
+  const { name, description, notes, url, sourceName, prepTimeMinutes, cookTimeMinutes, mainProtein, rating, easinessScore, healthScore, servingSize, isBasic } = req.body;
 
   try {
     const result = await pool.query(
@@ -340,10 +340,11 @@ router.put("/meals/:id", authenticate, async (req: AuthRequest, res: Response) =
         easiness_score = COALESCE($10, easiness_score),
         health_score = COALESCE($11, health_score),
         serving_size = COALESCE($12, serving_size),
+        is_basic = COALESCE($13, is_basic),
         updated_at = NOW()
-      WHERE id = $13 AND household_id = $14
+      WHERE id = $14 AND household_id = $15
       RETURNING *`,
-      [name, description, notes, url, sourceName, prepTimeMinutes, cookTimeMinutes, mainProtein, rating, easinessScore, healthScore, servingSize, mealId, householdId]
+      [name, description, notes, url, sourceName, prepTimeMinutes, cookTimeMinutes, mainProtein, rating, easinessScore, healthScore, servingSize, isBasic, mealId, householdId]
     );
 
     if (result.rows.length === 0) {
