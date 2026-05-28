@@ -318,9 +318,9 @@ router.get("/allMeals", authenticate, async (req: AuthRequest, res: Response) =>
   }
 });
 
-// PUT /api/v1/meals/:id
-// Update a meal's fields
-router.put("/meals/:id", authenticate, async (req: AuthRequest, res: Response) => {
+// PATCH /api/v1/meals/:id
+// Update a meal's fields (partial update)
+router.patch("/meals/:id", authenticate, async (req: AuthRequest, res: Response) => {
   const householdId = req.user!.householdId;
   const mealId = Number(req.params.id);
   const body = req.body;

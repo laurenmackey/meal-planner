@@ -67,7 +67,7 @@ export default function RecipesPage({ onLogout }: { onLogout: () => void }) {
     setError(null);
     try {
       const res = await apiFetch(`/api/v1/meals/${mealId}`, {
-        method: "PUT",
+        method: "PATCH",
         body: JSON.stringify(editValues),
       });
       const data = await res.json();
@@ -135,7 +135,7 @@ export default function RecipesPage({ onLogout }: { onLogout: () => void }) {
   const toggleArchive = async (meal: MealWithIngredients) => {
     try {
       const res = await apiFetch(`/api/v1/meals/${meal.id}`, {
-        method: "PUT",
+        method: "PATCH",
         body: JSON.stringify({ isArchived: !meal.isArchived }),
       });
       const data = await res.json();
