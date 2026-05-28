@@ -99,12 +99,14 @@ export default function GoogleCalendar({ meals }: GoogleCalendarProps) {
   const addToCalendar = async () => {
     setAdding(true);
     try {
+      const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       const events = schedule.map((s, i) => ({
         summary: s.mealName,
         date: s.date,
         startTime: s.startTime,
         durationMinutes: 60,
         eventId: eventIds[i] || undefined,
+        timeZone,
       }));
       const res = await apiFetch("/api/v1/google/addToCalendar", {
         method: "POST",

@@ -94,6 +94,7 @@ interface CalendarEvent {
   startTime: string; // HH:mm
   durationMinutes: number;
   eventId?: string;
+  timeZone?: string;
 }
 
 export async function createCalendarEvents(
@@ -115,13 +116,15 @@ export async function createCalendarEvents(
   let created = 0;
   const eventIds: string[] = [];
   for (const event of events) {
-    const startDateTime = new Date(`${event.date}T${event.startTime}:00`);
-    const endDateTime = new Date(startDateTime.getTime() + event.durationMinutes * 60 * 1000);
+    const startLocal = `${event.date}T${event.startTime}:00`;
+    const endMs = new Date(`${startLocal}Z`).getTime() + event.durationMinutes * 60 * 1000;
+    const endLocal = new Date(endMs).toISOString().replace("Z", "").slice(0, 19);
+    const timeZone = event.timeZone || "America/Los_Angeles";
 
     const body = {
       summary: event.summary,
-      start: { dateTime: startDateTime.toISOString() },
-      end: { dateTime: endDateTime.toISOString() },
+      start: { dateTime: startLocal, timeZone },
+      end: { dateTime: endLocal, timeZone },
       attendees,
     };
 
