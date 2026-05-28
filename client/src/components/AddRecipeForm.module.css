@@ -118,6 +118,21 @@
   font-family: inherit;
 }
 
+.manualButton {
+  display: block;
+  margin: 0 auto;
+}
+
+.basicCheck {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: #555;
+  cursor: pointer;
+  margin-top: 4px;
+}
+
 .saveButton {
   margin-top: 4px;
 }

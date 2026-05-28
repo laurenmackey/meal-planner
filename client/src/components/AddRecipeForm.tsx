@@ -52,6 +52,7 @@ export default function AddRecipeForm({ onSaved }: AddRecipeFormProps) {
   const [showPasteFallback, setShowPasteFallback] = useState(false);
   const [pastedText, setPastedText] = useState("");
   const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [isBasic, setIsBasic] = useState(false);
   const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
 
   const checkDuplicate = async (name: string) => {
@@ -170,6 +171,7 @@ export default function AddRecipeForm({ onSaved }: AddRecipeFormProps) {
           rating: Number(rating),
           easinessScore: Number(easinessScore),
           healthScore: Number(healthScore),
+          isBasic,
         }),
       });
       const data = await res.json();
@@ -183,6 +185,7 @@ export default function AddRecipeForm({ onSaved }: AddRecipeFormProps) {
       setRating("5");
       setEasinessScore("5");
       setHealthScore("5");
+      setIsBasic(false);
       setEditing(false);
       setShowPasteFallback(false);
       setPastedText("");
@@ -235,6 +238,31 @@ export default function AddRecipeForm({ onSaved }: AddRecipeFormProps) {
           </button>
         )}
       </div>
+
+      <div className={styles.divider}><span>or</span></div>
+
+      <button
+        className={`back-button ${styles.manualButton}`}
+        onClick={() => {
+          setRecipe({
+            name: "",
+            url: "",
+            sourceName: null,
+            description: null,
+            prepTimeMinutes: null,
+            cookTimeMinutes: null,
+            mainProtein: "none",
+            servingSize: 4,
+            ingredients: [],
+          });
+          setIsBasic(true);
+          setEasinessScore("8");
+          setEditing(true);
+        }}
+        disabled={!!parsing || !!recipe}
+      >
+        Add Manually
+      </button>
 
       {error && (
         <div className="error-toast">
@@ -434,6 +462,12 @@ export default function AddRecipeForm({ onSaved }: AddRecipeFormProps) {
                   </div>
                 ))}
               </div>
+              <button className="back-button" onClick={() => {
+                if (!recipe) return;
+                setRecipe({ ...recipe, ingredients: [...recipe.ingredients, { name: "", quantity: 1, measurementUnit: "whole", optional: false, notes: null }] });
+              }} style={{ marginTop: "-18px" }}>
+                + Add Ingredient
+              </button>
             </>
           )}
 
@@ -453,6 +487,14 @@ export default function AddRecipeForm({ onSaved }: AddRecipeFormProps) {
                 <input type="number" min="1" max="10" value={healthScore} onChange={(e) => setHealthScore(e.target.value)} />
               </label>
             </div>
+            <label className={styles.basicCheck}>
+              <input
+                type="checkbox"
+                checked={isBasic}
+                onChange={(e) => setIsBasic(e.target.checked)}
+              />
+              Basic meal (simple recipe you cook from memory)
+            </label>
             <label>
               Notes
               <textarea

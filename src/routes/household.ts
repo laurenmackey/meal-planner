@@ -13,6 +13,7 @@ function toSettings(row: any): HouseholdSettings {
     healthWeight: Number(row.health_weight),
     preferredProteins: row.preferred_proteins,
     defaultMealCount: row.default_meal_count,
+    basicMealCount: row.basic_meal_count,
   };
 }
 
@@ -22,7 +23,7 @@ router.get("/household/settings", authenticate, async (req: AuthRequest, res: Re
   try {
     const result = await pool.query(
       `SELECT name, invite_code, lookback_weeks, rating_weight, easiness_weight, health_weight,
-              preferred_proteins, default_meal_count
+              preferred_proteins, default_meal_count, basic_meal_count
        FROM households WHERE id = $1`,
       [householdId]
     );
@@ -46,7 +47,7 @@ router.get("/household/settings", authenticate, async (req: AuthRequest, res: Re
 // PUT /api/v1/household/settings
 router.put("/household/settings", authenticate, async (req: AuthRequest, res: Response) => {
   const householdId = req.user!.householdId;
-  const { name, lookbackWeeks, ratingWeight, easinessWeight, healthWeight, preferredProteins, defaultMealCount } = req.body as HouseholdSettings & { name?: string };
+  const { name, lookbackWeeks, ratingWeight, easinessWeight, healthWeight, preferredProteins, defaultMealCount, basicMealCount } = req.body as HouseholdSettings & { name?: string };
 
   try {
     const result = await pool.query(
@@ -58,11 +59,12 @@ router.put("/household/settings", authenticate, async (req: AuthRequest, res: Re
         health_weight = $5,
         preferred_proteins = $6,
         default_meal_count = $7,
+        basic_meal_count = $8,
         updated_at = NOW()
-      WHERE id = $8
+      WHERE id = $9
       RETURNING name, lookback_weeks, rating_weight, easiness_weight, health_weight,
-                preferred_proteins, default_meal_count`,
-      [name, lookbackWeeks, ratingWeight, easinessWeight, healthWeight, preferredProteins, defaultMealCount, householdId]
+                preferred_proteins, default_meal_count, basic_meal_count`,
+      [name, lookbackWeeks, ratingWeight, easinessWeight, healthWeight, preferredProteins, defaultMealCount, basicMealCount, householdId]
     );
 
     if (result.rows.length === 0) {

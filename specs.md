@@ -137,4 +137,4 @@ I'd like to build a meal planner app to help automate the work of:
 ### Potential future features:
 1. Scraping sites like NYT Cooking to recommend new recipes to add to the db. Claude could score recipes against our preferences and recommend new ones to add.
 2. Smarter ingredients list. Let you take a picture of the fridge and pantry and generate ingredients list accounting for what we already have.
-3. Agentic interactions (TBD how useful this would be). Instead of clicking buttons in the UI to regenerate/edit quantities/etc, can we have more of a text-based interaction with an agent interface to adjust the meals OR to find new meals to add?
+3. Allow you to save recipes as "pairing recipes" - something like a side salad that wouldn't be recommended on its own but could be recommended along with a recipe that needs a side. An extension could be to add extra calendar invites for things like a dinner party and prepping focacia the night before.

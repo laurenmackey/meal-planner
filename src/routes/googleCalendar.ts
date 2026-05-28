@@ -75,9 +75,14 @@ router.post("/google/addToCalendar", authenticate, async (req: AuthRequest, res:
   try {
     const result = await createCalendarEvents(req.user!.userId, req.user!.householdId, events);
     res.json(result);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
+  } catch (err: any) {
     console.error("Error adding to calendar:", err);
+    if (err?.response?.data?.error === "invalid_grant") {
+      await disconnect(req.user!.userId);
+      res.status(401).json({ error: "Google Calendar session expired. Please reconnect." });
+      return;
+    }
+    const message = err instanceof Error ? err.message : "Unknown error";
     res.status(500).json({ error: "Failed to add to calendar", details: message });
   }
 });

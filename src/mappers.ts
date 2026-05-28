@@ -17,6 +17,8 @@ export function toMeal(row: any): Meal {
     easinessScore: row.easiness_score,
     healthScore: row.health_score,
     servingSize: row.serving_size,
+    isBasic: row.is_basic,
+    isArchived: row.is_archived,
   };
 }
 

@@ -14,7 +14,10 @@ export default function MealCard({ meal, multiplier, onReject, onMultiplierChang
     <div className={styles.card}>
       <div className={styles.content}>
         <div>
-          <h3 className={styles.name}>{meal.name}</h3>
+          <h3 className={styles.name}>
+            {meal.name}
+            {meal.isBasic && <span className={styles.basicBadge}>Basic</span>}
+          </h3>
           {meal.description && <p className={styles.description}>{meal.description}</p>}
           {meal.notes && <p className={styles.notes}>{meal.notes}</p>}
           {meal.url && (
@@ -32,7 +35,7 @@ export default function MealCard({ meal, multiplier, onReject, onMultiplierChang
               <>{" · "}<span>Protein: {meal.mainProtein}</span></>
             )}
             {" · "}
-            <span>Serves {meal.servingSize}</span>
+            <span>Serves {meal.servingSize * multiplier}</span>
           </div>
           <div className={styles.multiplier}>
             <label>

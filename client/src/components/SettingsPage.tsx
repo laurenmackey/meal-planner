@@ -10,6 +10,7 @@ interface DraftSettings {
   easinessWeight: string;
   healthWeight: string;
   defaultMealCount: string;
+  basicMealCount: string;
   preferredProteins: Protein[];
 }
 
@@ -20,6 +21,7 @@ function toDraft(s: HouseholdSettings): DraftSettings {
     easinessWeight: String(s.easinessWeight),
     healthWeight: String(s.healthWeight),
     defaultMealCount: String(s.defaultMealCount),
+    basicMealCount: String(s.basicMealCount),
     preferredProteins: [...s.preferredProteins],
   };
 }
@@ -31,6 +33,7 @@ function fromDraft(d: DraftSettings): HouseholdSettings {
     easinessWeight: Number(d.easinessWeight) || 0,
     healthWeight: Number(d.healthWeight) || 0,
     defaultMealCount: Number(d.defaultMealCount) || 1,
+    basicMealCount: Number(d.basicMealCount) || 0,
     preferredProteins: d.preferredProteins,
   };
 }
@@ -162,12 +165,9 @@ export default function SettingsPage({ onLogout }: { onLogout: () => void }) {
 
       <div className={styles.section}>
         <h2 className={styles.heading}>Meal Selection</h2>
-        <p className={styles.hint}>
-          These settings control how meals are scored and selected each week. Lookback weeks controls how long to avoid repeating recently chosen meals.
-        </p>
 
         <div className={styles.field}>
-          <span className={styles.label}>Default Meal Count</span>
+          <span className={styles.label}>Default Meal Count <span className={styles.info} data-tip="How many meals are chosen per week">i</span></span>
           {editing ? (
             <input
               id="default-count"
@@ -184,7 +184,24 @@ export default function SettingsPage({ onLogout }: { onLogout: () => void }) {
         </div>
 
         <div className={styles.field}>
-          <span className={styles.label}>Lookback Weeks</span>
+          <span className={styles.label}>Basic Meal Count <span className={styles.info} data-tip="How many of the weekly meals should be basic (simple, from-memory) recipes. Lookback weeks does not apply to basic meals.">i</span></span>
+          {editing ? (
+            <input
+              id="basic-count"
+              className="edit-input-sm"
+              type="number"
+              min="0"
+              max="10"
+              value={displaySettings.basicMealCount}
+              onChange={(e) => setDraft({ ...draft!, basicMealCount: e.target.value })}
+            />
+          ) : (
+            <span className={styles.value}>{settings.basicMealCount}</span>
+          )}
+        </div>
+
+        <div className={styles.field}>
+          <span className={styles.label}>Lookback Weeks <span className={styles.info} data-tip="How long to avoid repeating recently chosen meals. Does not apply to basic meals.">i</span></span>
           {editing ? (
             <input
               id="lookback"
@@ -200,8 +217,7 @@ export default function SettingsPage({ onLogout }: { onLogout: () => void }) {
           )}
         </div>
 
-        <h3 className={styles.subheading}>Score Weights</h3>
-        <p className={styles.hint}>How much each factor contributes to a meal's selection score (0 to 1).</p>
+        <h3 className={styles.subheading}>Score Weights <span className={styles.info} data-tip="How much each factor contributes to a meal's selection score (0 to 1)">i</span></h3>
 
         <div className={styles.field}>
           <span className={styles.label}>Rating</span>
@@ -255,8 +271,7 @@ export default function SettingsPage({ onLogout }: { onLogout: () => void }) {
           )}
         </div>
 
-        <h3 className={styles.subheading}>Preferred Proteins</h3>
-        <p className={styles.hint}>Meals with these proteins get a scoring bonus.</p>
+        <h3 className={styles.subheading}>Preferred Proteins <span className={styles.info} data-tip="Meals with these proteins get a scoring bonus">i</span></h3>
         {editing ? (
           <div className={styles.proteins}>
             {PROTEINS.filter((p) => p !== "none" && p !== "other").map((protein) => (
