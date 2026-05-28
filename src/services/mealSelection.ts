@@ -86,6 +86,7 @@ export async function chooseWeeklyMeals(
     `SELECT m.* FROM meals m
      WHERE m.household_id = $1
        AND m.is_basic = TRUE
+       AND m.is_archived = FALSE
        AND m.id NOT IN (${excludeCurrentQuery})`,
     [householdId]
   );
@@ -96,6 +97,7 @@ export async function chooseWeeklyMeals(
         `SELECT m.* FROM meals m
          WHERE m.household_id = $1
            AND m.is_basic = FALSE
+           AND m.is_archived = FALSE
            AND m.id NOT IN (${excludeCurrentQuery})`,
         [householdId]
       )

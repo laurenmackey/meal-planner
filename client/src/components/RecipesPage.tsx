@@ -132,9 +132,25 @@ export default function RecipesPage({ onLogout }: { onLogout: () => void }) {
     }
   };
 
-  // Group meals by protein
+  const toggleArchive = async (meal: MealWithIngredients) => {
+    try {
+      const res = await apiFetch(`/api/v1/meals/${meal.id}`, {
+        method: "PUT",
+        body: JSON.stringify({ isArchived: !meal.isArchived }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setMeals((prev) => prev.map((m) => (m.id === meal.id ? { ...m, ...data.meal } : m)));
+      }
+    } catch {}
+  };
+
+  const activeMeals = meals.filter((m) => !m.isArchived);
+  const archivedMeals = meals.filter((m) => m.isArchived);
+
+  // Group active meals by protein
   const grouped: Record<string, MealWithIngredients[]> = {};
-  for (const meal of meals) {
+  for (const meal of activeMeals) {
     const protein = meal.mainProtein || "none";
     if (!grouped[protein]) grouped[protein] = [];
     grouped[protein].push(meal);
@@ -239,6 +255,9 @@ export default function RecipesPage({ onLogout }: { onLogout: () => void }) {
                               </button>
                               <button className="back-button" onClick={() => startEditingIngredients(meal)}>
                                 Edit Ingredients
+                              </button>
+                              <button className={styles.archiveButton} onClick={() => toggleArchive(meal)}>
+                                {meal.isArchived ? "Unarchive" : "Archive"}
                               </button>
                             </div>
                           </>
@@ -381,6 +400,36 @@ export default function RecipesPage({ onLogout }: { onLogout: () => void }) {
           })}
         </div>
       ))}
+
+      {archivedMeals.length > 0 && (
+        <div className={styles.archivedSection}>
+          <h2 className={styles.proteinHeading}>
+            Archived
+            <span className={styles.proteinCount}> ({archivedMeals.length})</span>
+          </h2>
+          {archivedMeals.map((meal) => (
+            <div key={meal.id} className={styles.item}>
+              <div className={styles.itemHeader} onClick={() => toggleMeal(meal.id)}>
+                <span className={`caret ${expandedMeals.has(meal.id) ? "caret-open" : ""}`}>&#9654;</span>
+                <span className={styles.itemName}>{meal.name}</span>
+              </div>
+              {expandedMeals.has(meal.id) && (
+                <div className={styles.itemBody}>
+                  <span className={styles.itemMeta}>
+                    Rating: {meal.rating} | Ease: {meal.easinessScore} | Health: {meal.healthScore}
+                  </span>
+                  {meal.description && <p className="recipe-description">{meal.description}</p>}
+                  <div className={`ingredients-buttons ${styles.editButtons}`}>
+                    <button className={styles.archiveButton} onClick={() => toggleArchive(meal)}>
+                      Unarchive
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

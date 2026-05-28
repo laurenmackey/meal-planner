@@ -104,6 +104,29 @@
   margin-top: 8px;
 }
 
+.archiveButton {
+  padding: 4px 12px;
+  background: none;
+  color: #888;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.archiveButton:hover {
+  color: #555;
+  border-color: #999;
+}
+
+.archivedSection {
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid #ddd;
+  opacity: 0.7;
+}
+
 .editButtons {
   display: flex;
   gap: 10px;

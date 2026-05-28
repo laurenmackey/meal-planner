@@ -323,28 +323,42 @@ router.get("/allMeals", authenticate, async (req: AuthRequest, res: Response) =>
 router.put("/meals/:id", authenticate, async (req: AuthRequest, res: Response) => {
   const householdId = req.user!.householdId;
   const mealId = Number(req.params.id);
-  const { name, description, notes, url, sourceName, prepTimeMinutes, cookTimeMinutes, mainProtein, rating, easinessScore, healthScore, servingSize, isBasic } = req.body;
+  const body = req.body;
+  const has = (key: string) => key in body;
 
   try {
     const result = await pool.query(
       `UPDATE meals SET
         name = COALESCE($1, name),
-        description = $2,
-        notes = $3,
-        url = $4,
-        source_name = $5,
-        prep_time_minutes = $6,
-        cook_time_minutes = $7,
-        main_protein = $8,
-        rating = COALESCE($9, rating),
-        easiness_score = COALESCE($10, easiness_score),
-        health_score = COALESCE($11, health_score),
-        serving_size = COALESCE($12, serving_size),
-        is_basic = COALESCE($13, is_basic),
+        description = CASE WHEN $2 THEN $3 ELSE description END,
+        notes = CASE WHEN $4 THEN $5 ELSE notes END,
+        url = CASE WHEN $6 THEN $7 ELSE url END,
+        source_name = CASE WHEN $8 THEN $9 ELSE source_name END,
+        prep_time_minutes = CASE WHEN $10 THEN $11 ELSE prep_time_minutes END,
+        cook_time_minutes = CASE WHEN $12 THEN $13 ELSE cook_time_minutes END,
+        main_protein = CASE WHEN $14 THEN $15 ELSE main_protein END,
+        rating = COALESCE($16, rating),
+        easiness_score = COALESCE($17, easiness_score),
+        health_score = COALESCE($18, health_score),
+        serving_size = COALESCE($19, serving_size),
+        is_basic = COALESCE($20, is_basic),
+        is_archived = COALESCE($21, is_archived),
         updated_at = NOW()
-      WHERE id = $14 AND household_id = $15
+      WHERE id = $22 AND household_id = $23
       RETURNING *`,
-      [name, description, notes, url, sourceName, prepTimeMinutes, cookTimeMinutes, mainProtein, rating, easinessScore, healthScore, servingSize, isBasic, mealId, householdId]
+      [
+        body.name,
+        has("description"), body.description,
+        has("notes"), body.notes,
+        has("url"), body.url,
+        has("sourceName"), body.sourceName,
+        has("prepTimeMinutes"), body.prepTimeMinutes,
+        has("cookTimeMinutes"), body.cookTimeMinutes,
+        has("mainProtein"), body.mainProtein,
+        body.rating, body.easinessScore, body.healthScore, body.servingSize,
+        body.isBasic, body.isArchived,
+        mealId, householdId,
+      ]
     );
 
     if (result.rows.length === 0) {

@@ -19,6 +19,7 @@ export interface Meal {
   healthScore: number;
   servingSize: number;
   isBasic: boolean;
+  isArchived: boolean;
 }
 
 export const SERVING_MULTIPLIERS = [1, 1.5, 2, 3] as const;
