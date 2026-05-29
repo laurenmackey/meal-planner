@@ -58,7 +58,12 @@ Edit `.env` with your values:
 | `ANTHROPIC_API_KEY` | Claude API key for recipe parsing | Yes |
 | `NYT_COOKING_COOKIE` | Cookie for fetching NYT Cooking recipes | Optional |
 | `RESEND_API_KEY` | Resend API key for weekly emails | Yes |
+| `EMAIL_FROM` | Sender email address for weekly emails | Yes (prod) |
 | `APP_URL` | Public URL of the app (used in email links) | Yes (prod) |
+| `GOOGLE_CLIENT_ID` | Google OAuth client ID (Calendar integration) | Optional |
+| `GOOGLE_CLIENT_SECRET` | Google OAuth client secret | Optional |
+| `GOOGLE_REDIRECT_URI` | OAuth callback URL | Optional |
+| `MCP_API_KEY` | API key for the MCP connector (Claude integration) | Optional |
 
 3. **Create the database and run migrations:**
 
@@ -114,6 +119,20 @@ A cron job runs every Friday at 5pm PT, generates meal suggestions for each hous
 curl -X POST http://localhost:3000/api/v1/testWeeklyEmail --cookie "meal_planner_session=SESSION_COOKIE"
 ```
 
+### MCP Integration (Save Recipes from Claude)
+
+The app includes a remote [MCP](https://modelcontextprotocol.io/) server that lets you save recipes directly from a Claude conversation. When chatting with Claude about a recipe, just say "save this to our meal planner" and Claude will extract the recipe details and save it to your database.
+
+**Setup:**
+
+1. Set the `MCP_API_KEY` env var on your deployment (any secure random string)
+2. In [claude.ai](https://claude.ai), go to **Settings > Customize > Connectors > "+"**
+3. Add a connector with:
+   - **URL**: `https://<your-domain>/mcp/<MCP_API_KEY>/<household_id>`
+4. Chat with Claude about recipes and ask it to save them to your meal planner
+
+Requires a Claude Pro subscription. The connector works on claude.ai (web), Claude Desktop, and mobile.
+
 ## Database Scripts
 
 | Command              | Description                                      |
@@ -145,6 +164,7 @@ meal-planner/
 │   ├── routes/          # API routes
 │   ├── services/        # Shared business logic (meal selection)
 │   ├── db.ts            # Database connection
+│   ├── mcp.ts           # MCP server for Claude integration
 │   ├── mappers.ts       # DB row to TS type mappers
 │   ├── types.ts         # Shared TypeScript types
 │   └── server.ts        # Express server
