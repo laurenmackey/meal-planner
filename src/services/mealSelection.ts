@@ -5,7 +5,7 @@ import { toMeal } from "../mappers";
 const PROTEIN_VARIETY_BONUS = 2;
 const PREFERRED_PROTEIN_BONUS = 1;
 
-function rankMeals(meals: Meal[], settings: HouseholdSettings, usedProteins: Set<string | null>) {
+export function rankMeals(meals: Meal[], settings: HouseholdSettings, usedProteins: Set<string | null>) {
   return meals
     .map((meal) => {
       const varietyBonus = usedProteins.has(meal.mainProtein) ? 0 : PROTEIN_VARIETY_BONUS;

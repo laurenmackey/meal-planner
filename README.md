@@ -131,7 +131,7 @@ The app includes a remote [MCP](https://modelcontextprotocol.io/) server that le
    - **URL**: `https://<your-domain>/mcp/<MCP_API_KEY>/<household_id>`
 4. Chat with Claude about recipes and ask it to save them to your meal planner
 
-Requires a Claude Pro subscription. The connector works on claude.ai (web), Claude Desktop, and mobile.
+The connector works on claude.ai (web), Claude Desktop, and mobile.
 
 ## Database Scripts
 
