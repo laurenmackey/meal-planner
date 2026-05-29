@@ -8,6 +8,7 @@ import recipesRouter from "./routes/recipes";
 import googleCalendarRouter from "./routes/googleCalendar";
 import householdRouter from "./routes/household";
 import { startWeeklyMealCron } from "./cron/weeklyMeals";
+import { handleMcpPost, handleMcpGet, handleMcpDelete } from "./mcp";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -20,6 +21,11 @@ app.use("/api/v1", foodSelectionsRouter);
 app.use("/api/v1", recipesRouter);
 app.use("/api/v1", googleCalendarRouter);
 app.use("/api/v1", householdRouter);
+
+// MCP endpoint for Claude integration
+app.post("/mcp/:apiKey/:householdId", handleMcpPost);
+app.get("/mcp/:apiKey/:householdId", handleMcpGet);
+app.delete("/mcp/:apiKey/:householdId", handleMcpDelete);
 
 // Serve React frontend in production
 const clientDistPath = path.join(process.cwd(), "client/dist");
