@@ -133,6 +133,22 @@ The app includes a remote [MCP](https://modelcontextprotocol.io/) server that le
 
 The connector works on claude.ai (web), Claude Desktop, and mobile.
 
+## Testing
+
+```bash
+# One-time setup: create the test database and run migrations
+npm run db:test:setup
+
+# Run all tests
+npm test
+
+# Run tests in watch mode
+npm run test:watch
+
+# Run unit tests only (no DB required)
+npm run test:unit
+```
+
 ## Database Scripts
 
 | Command              | Description                                      |
