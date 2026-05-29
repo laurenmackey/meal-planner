@@ -93,7 +93,7 @@ Open http://localhost:5173, click "Sign up", enter your email and password, and 
 psql -d meal_planner -c "SELECT id, name, invite_code FROM households;"
 ```
 
-Share the `invite_code` with your partner so they can sign up and join the same household. You can also see the invite code in the app via the hamburger menu.
+You can share the `invite_code` with anyone you want to test with as part of your household. In production, you should share with other member(s) of your household so that all meal generation, settings, etc are shared. You can also see the invite code anytime in the app under Settings.
 
 7. **Seed sample meals (optional):**
 
@@ -101,15 +101,18 @@ Share the `invite_code` with your partner so they can sign up and join the same 
 HOUSEHOLD_ID=<your_household_id> npm run db:seed
 ```
 
-Replace `<your_household_id>` with the `id` from step 6.
+Replace `<your_household_id>` with the `id` from step 6. You can also manually add meals through the app.
 
 ## Features
 
 ### Meal Generation
-Generate weekly meal suggestions based on a ranking algorithm that considers rating, easiness, health score, protein variety, and recency.
+Generate weekly meal suggestions based on a ranking algorithm that considers things like rating, easiness, health score, protein variety, and recency.
 
 ### Recipe Parsing
-Add recipes by pasting a URL — the app fetches the page and uses Claude to extract structured data (name, ingredients, protein, times, servings). If the URL is blocked (e.g. Cloudflare), a paste-text fallback lets you copy the recipe content manually. All parsed fields are editable before saving.
+Add recipes by:
+1. Pasting a URL — the app fetches the page and uses Claude to extract structured data (name, ingredients, protein, times, servings). If the URL is blocked (e.g. Cloudflare), a paste-text fallback lets you copy the recipe content manually. All parsed fields are editable before saving.
+2. Uploading a photo - the app uses Claude to parse the photo and extract data like above.
+3. Filling out a form manually.
 
 ### Weekly Email (Cron)
 A cron job runs every Friday at 5pm PT, generates meal suggestions for each household, and emails the results via Resend. The email includes meal names, descriptions, recipe links, and a link to the app.
@@ -149,46 +152,6 @@ npm run test:watch
 npm run test:unit
 ```
 
-## Database Scripts
-
-| Command              | Description                                      |
-| -------------------- | ------------------------------------------------ |
-| `npm run db:create`  | Create the `meal_planner` database               |
-| `npm run db:drop`    | Drop the database                                |
-| `npm run db:migrate` | Run all pending migrations                       |
-| `npm run db:rollback`| Roll back the last migration                     |
-| `npm run db:setup`   | Create database + run all migrations             |
-| `npm run db:reset`   | Drop, recreate, and re-run all migrations        |
-| `npm run db:seed`    | Seed sample meals/staples (requires HOUSEHOLD_ID)|
-
-## Project Structure
-
-```
-meal-planner/
-├── client/              # React frontend
-│   ├── src/
-│   │   ├── components/  # React components (AuthPage, MealCard, AddRecipePage)
-│   │   ├── api.ts       # API fetch helper
-│   │   ├── App.tsx      # Main app with routing
-│   │   └── App.css      # Styles
-│   └── index.html
-├── migrations/          # SQL migration files
-├── scripts/             # Manual scripts (seed data)
-├── src/                 # Express backend
-│   ├── cron/            # Scheduled jobs (weekly meal email)
-│   ├── middleware/       # Auth middleware
-│   ├── routes/          # API routes
-│   ├── services/        # Shared business logic (meal selection)
-│   ├── db.ts            # Database connection
-│   ├── mcp.ts           # MCP server for Claude integration
-│   ├── mappers.ts       # DB row to TS type mappers
-│   ├── types.ts         # Shared TypeScript types
-│   └── server.ts        # Express server
-├── package.json
-├── tsconfig.json
-└── vite.config.ts
-```
-
 ## Deployment
 
-The app is deployed on Railway. Set all environment variables in the Railway service's Variables tab. Railway provides the `PORT` and `DATABASE_URL` automatically.
+The app is deployed on Railway. Any time code is merged to main, a new deploy is automatically triggered on Railway to get production up to date. Set all environment variables in the Railway service's Variables tab. Railway provides the `PORT` and `DATABASE_URL` automatically.
