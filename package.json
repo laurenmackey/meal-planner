@@ -15,7 +15,10 @@
     "dev:client": "vite",
     "build": "tsc && vite build",
     "start": "node dist/server.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "DATABASE_URL=postgresql://localhost/meal_planner_test vitest run",
+    "test:watch": "DATABASE_URL=postgresql://localhost/meal_planner_test vitest",
+    "test:unit": "vitest run services/__tests__ utils/__tests__ __tests__",
+    "db:test:setup": "createdb meal_planner_test && DATABASE_URL=postgresql://localhost/meal_planner_test node-pg-migrate up --migration-file-language sql -m migrations"
   },
   "keywords": [],
   "author": "",
@@ -48,9 +51,12 @@
     "@types/pg": "^8.20.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
+    "@types/supertest": "^7.2.0",
     "@vitejs/plugin-react": "^6.0.1",
+    "supertest": "^7.2.2",
     "ts-node": "^10.9.2",
     "typescript": "^6.0.3",
-    "vite": "^8.0.10"
+    "vite": "^8.0.10",
+    "vitest": "^4.1.7"
   }
 }
