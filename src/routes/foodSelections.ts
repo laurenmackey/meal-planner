@@ -72,6 +72,72 @@ router.get("/weeklySelections", authenticate, async (req: AuthRequest, res: Resp
   }
 });
 
+// POST /api/v1/addMealToWeek
+// Body: { mealId: number }
+// Manually add a specific meal to this week's selections
+router.post("/addMealToWeek", authenticate, async (req: AuthRequest, res: Response) => {
+  const householdId = req.user!.householdId;
+  const { mealId } = req.body;
+
+  if (!mealId || typeof mealId !== "number") {
+    res.status(400).json({ error: "mealId is required" });
+    return;
+  }
+
+  try {
+    // Verify the meal belongs to this household
+    const mealResult = await pool.query(
+      "SELECT * FROM meals WHERE id = $1 AND household_id = $2",
+      [mealId, householdId]
+    );
+    if (mealResult.rows.length === 0) {
+      res.status(404).json({ error: "Meal not found" });
+      return;
+    }
+
+    // Check if already selected this week (including rejected — re-propose it)
+    const existing = await pool.query(
+      `SELECT id, status FROM food_selections
+       WHERE meal_id = $1 AND household_id = $2
+         AND week_start_utc(chosen_at) = week_start_utc(NOW())`,
+      [mealId, householdId]
+    );
+
+    let foodSelectionId: number;
+    if (existing.rows.length > 0) {
+      if (existing.rows[0].status !== "rejected") {
+        res.status(409).json({ error: "This meal is already in this week's selections" });
+        return;
+      }
+      await pool.query(
+        `UPDATE food_selections SET status = 'proposed', updated_at = NOW() WHERE id = $1`,
+        [existing.rows[0].id]
+      );
+      foodSelectionId = existing.rows[0].id;
+    } else {
+      const insertResult = await pool.query(
+        `INSERT INTO food_selections (meal_id, household_id, status) VALUES ($1, $2, 'proposed') RETURNING id`,
+        [mealId, householdId]
+      );
+      foodSelectionId = insertResult.rows[0].id;
+    }
+
+    const meal: MealSelection = {
+      ...toMeal(mealResult.rows[0]),
+      foodSelectionId,
+      selectionStatus: "proposed",
+      servingSizeMultiplier: 1,
+      score: 0,
+    };
+
+    res.json({ meal });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    console.error("Error adding meal to week:", err);
+    res.status(500).json({ error: "Failed to add meal to week", details: message });
+  }
+});
+
 // POST /api/v1/rejectFoodSelections
 // Body: { foodSelectionIds: number[] }
 router.post("/rejectFoodSelections", authenticate, async (req: AuthRequest, res: Response) => {

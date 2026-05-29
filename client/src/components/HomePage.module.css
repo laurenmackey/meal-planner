@@ -102,3 +102,62 @@
   font-size: 14px;
   padding: 4px 0;
 }
+
+.addMealDropdown {
+  margin-bottom: 20px;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background: #fafafa;
+}
+
+.addMealResults {
+  max-height: 300px;
+  overflow-y: auto;
+  margin-top: 8px;
+}
+
+.addMealItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: 8px 12px;
+  background: white;
+  border: 1px solid #eee;
+  border-radius: 4px;
+  margin-bottom: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-family: inherit;
+  text-align: left;
+}
+
+.addMealItem:hover {
+  background: #f0f0f0;
+}
+
+.addMealProtein {
+  color: #888;
+  font-size: 12px;
+  margin-left: 8px;
+}
+
+.addMealEmpty {
+  color: #999;
+  font-size: 13px;
+  padding: 8px 0;
+  margin: 0;
+}
+
+.addMealCancel {
+  margin-top: 8px;
+  padding: 4px 12px;
+  background: none;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  color: #666;
+}

@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { Routes, Route } from "react-router-dom";
-import { MealSelection, StapleSelection, AggregatedIngredient, MEASUREMENT_UNITS } from "../../src/types";
+import { Meal, MealSelection, StapleSelection, AggregatedIngredient, MEASUREMENT_UNITS } from "../../src/types";
 import MealCard from "./components/MealCard";
 import AuthPage from "./components/AuthPage";
 import GoogleSetupPage from "./components/GoogleSetupPage";
@@ -104,6 +104,47 @@ function HomePage({ onLogout }: { onLogout: () => void }) {
   }, []);
 
   const [shortfall, setShortfall] = useState(0);
+  const [showAddMeal, setShowAddMeal] = useState(false);
+  const [mealSearch, setMealSearch] = useState("");
+  const [allMeals, setAllMeals] = useState<Meal[]>([]);
+  const [addingMealId, setAddingMealId] = useState<number | null>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const openAddMeal = async () => {
+    setShowAddMeal(true);
+    setMealSearch("");
+    if (allMeals.length === 0) {
+      try {
+        const res = await apiFetch("/api/v1/allMeals");
+        const data = await res.json();
+        if (res.ok) setAllMeals(data.meals.map((m: any) => m as Meal));
+      } catch {}
+    }
+    setTimeout(() => searchInputRef.current?.focus(), 50);
+  };
+
+  const addMealToWeek = async (mealId: number) => {
+    setAddingMealId(mealId);
+    setError(null);
+    try {
+      const res = await apiFetch("/api/v1/addMealToWeek", {
+        method: "POST",
+        body: JSON.stringify({ mealId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Failed to add meal");
+        return;
+      }
+      setMeals((prev) => [...prev, data.meal]);
+      setShowAddMeal(false);
+      setMealSearch("");
+    } catch {
+      setError("Failed to connect to server");
+    } finally {
+      setAddingMealId(null);
+    }
+  };
 
   const generateMeals = async (includeAll = false) => {
     const requestCount = includeAll && shortfall > 0 ? shortfall : count;
@@ -262,7 +303,49 @@ function HomePage({ onLogout }: { onLogout: () => void }) {
         >
           {loading ? "Generating..." : "Generate Meals"}
         </button>
+        <button className="back-button" onClick={openAddMeal}>
+          + Add Specific Meal
+        </button>
       </div>
+
+      {showAddMeal && (
+        <div className={styles.addMealDropdown}>
+          <input
+            ref={searchInputRef}
+            className="edit-input"
+            type="text"
+            placeholder="Search meals..."
+            value={mealSearch}
+            onChange={(e) => setMealSearch(e.target.value)}
+          />
+          <div className={styles.addMealResults}>
+            {allMeals
+              .filter((m) => !m.isArchived && m.name.toLowerCase().includes(mealSearch.toLowerCase()))
+              .filter((m) => !meals.some((s) => s.id === m.id))
+              .slice(0, 10)
+              .map((m) => (
+                <button
+                  key={m.id}
+                  className={styles.addMealItem}
+                  onClick={() => addMealToWeek(m.id)}
+                  disabled={addingMealId === m.id}
+                >
+                  {m.name}
+                  {m.mainProtein && m.mainProtein !== "none" && (
+                    <span className={styles.addMealProtein}>{m.mainProtein}</span>
+                  )}
+                </button>
+              ))}
+            {allMeals.length > 0 && allMeals
+              .filter((m) => !m.isArchived && m.name.toLowerCase().includes(mealSearch.toLowerCase()))
+              .filter((m) => !meals.some((s) => s.id === m.id))
+              .length === 0 && (
+              <p className={styles.addMealEmpty}>No matching meals found</p>
+            )}
+          </div>
+          <button className={styles.addMealCancel} onClick={() => setShowAddMeal(false)}>Cancel</button>
+        </div>
+      )}
 
       {error && (
         <div className="error-toast">
