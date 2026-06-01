@@ -68,3 +68,33 @@
   color: #2d6a4f;
   font-size: 13px;
 }
+
+.copyRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px 0 4px;
+  border-top: 1px solid #eee;
+}
+
+.copyButton {
+  padding: 6px 14px;
+  background-color: #2d6a4f;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.copyButton:disabled {
+  background-color: #ccc;
+  cursor: default;
+}
+
+.copyResult {
+  color: #666;
+  font-size: 13px;
+}

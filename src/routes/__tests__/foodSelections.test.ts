@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterAll } from "vitest";
 import request from "supertest";
 import app from "../../app";
 import { cleanDatabase, closeDatabase, createTestUser, createTestMeal, createTestIngredients } from "../../test/setup";
+import pool from "../../db";
 
 describe("Food selections routes", () => {
   let user: Awaited<ReturnType<typeof createTestUser>>;
@@ -138,6 +139,77 @@ describe("Food selections routes", () => {
 
       expect(res.status).toBe(200);
       expect(res.body.meal.name).toBe("Salmon Bowl");
+    });
+  });
+
+  describe("POST /api/v1/copyWeekToCurrent", () => {
+    // Inserts a non-rejected meal selection in a past week and returns its week_start (ISO)
+    async function seedPastWeek(householdId: number, mealId: number): Promise<string> {
+      const result = await pool.query(
+        `INSERT INTO food_selections (meal_id, household_id, status, chosen_at)
+         VALUES ($1, $2, 'proposed', NOW() - INTERVAL '14 days')
+         RETURNING DATE_TRUNC('week', chosen_at) AS week_start`,
+        [mealId, householdId]
+      );
+      return result.rows[0].week_start.toISOString();
+    }
+
+    it("copies a past week's meals into this week", async () => {
+      const mealA = await createTestMeal(user.householdId, { name: "Meal A" });
+      const mealB = await createTestMeal(user.householdId, { name: "Meal B" });
+      const weekStart = await seedPastWeek(user.householdId, mealA);
+      await seedPastWeek(user.householdId, mealB);
+
+      const res = await request(app)
+        .post("/api/v1/copyWeekToCurrent")
+        .set("Cookie", user.cookie)
+        .send({ weekStart });
+
+      expect(res.status).toBe(200);
+      expect(res.body.added).toBe(2);
+
+      const weekly = await request(app)
+        .get("/api/v1/weeklySelections")
+        .set("Cookie", user.cookie);
+      const names = weekly.body.meals.map((m: any) => m.name).sort();
+      expect(names).toEqual(["Meal A", "Meal B"]);
+    });
+
+    it("skips meals already in this week", async () => {
+      const mealId = await createTestMeal(user.householdId, { name: "Meal A" });
+      const weekStart = await seedPastWeek(user.householdId, mealId);
+
+      // Already in this week
+      await request(app)
+        .post("/api/v1/addMealToWeek")
+        .set("Cookie", user.cookie)
+        .send({ mealId });
+
+      const res = await request(app)
+        .post("/api/v1/copyWeekToCurrent")
+        .set("Cookie", user.cookie)
+        .send({ weekStart });
+
+      expect(res.status).toBe(200);
+      expect(res.body.added).toBe(0);
+    });
+
+    it("returns 404 when the week has no meals", async () => {
+      const res = await request(app)
+        .post("/api/v1/copyWeekToCurrent")
+        .set("Cookie", user.cookie)
+        .send({ weekStart: "2020-01-06T00:00:00.000Z" });
+
+      expect(res.status).toBe(404);
+    });
+
+    it("returns 400 when weekStart is missing", async () => {
+      const res = await request(app)
+        .post("/api/v1/copyWeekToCurrent")
+        .set("Cookie", user.cookie)
+        .send({});
+
+      expect(res.status).toBe(400);
     });
   });
 

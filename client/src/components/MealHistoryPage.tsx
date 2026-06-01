@@ -13,6 +13,8 @@ export default function MealHistoryPage({ onLogout }: { onLogout: () => void }) 
   const [weeks, setWeeks] = useState<WeekGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedWeeks, setExpandedWeeks] = useState<Set<string>>(new Set());
+  const [copyingWeek, setCopyingWeek] = useState<string | null>(null);
+  const [copyResult, setCopyResult] = useState<Record<string, string>>({});
 
   useEffect(() => {
     const loadHistory = async () => {
@@ -38,6 +40,37 @@ export default function MealHistoryPage({ onLogout }: { onLogout: () => void }) 
       }
       return next;
     });
+  };
+
+  const copyWeekToCurrent = async (weekStart: string) => {
+    setCopyingWeek(weekStart);
+    setCopyResult((prev) => {
+      const next = { ...prev };
+      delete next[weekStart];
+      return next;
+    });
+    try {
+      const res = await apiFetch("/api/v1/copyWeekToCurrent", {
+        method: "POST",
+        body: JSON.stringify({ weekStart }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        const n = data.added as number;
+        setCopyResult((prev) => ({
+          ...prev,
+          [weekStart]: n > 0
+            ? `Added ${n} meal${n !== 1 ? "s" : ""} to this week`
+            : "All of these meals are already in this week",
+        }));
+      } else {
+        setCopyResult((prev) => ({ ...prev, [weekStart]: data.error || "Failed to add meals" }));
+      }
+    } catch {
+      setCopyResult((prev) => ({ ...prev, [weekStart]: "Failed to connect to server" }));
+    } finally {
+      setCopyingWeek(null);
+    }
   };
 
   const formatWeekLabel = (weekStart: string) => {
@@ -88,6 +121,18 @@ export default function MealHistoryPage({ onLogout }: { onLogout: () => void }) 
                       )}
                     </li>
                   ))}
+                  <li className={styles.copyRow}>
+                    <button
+                      className={styles.copyButton}
+                      onClick={() => copyWeekToCurrent(week.weekStart)}
+                      disabled={copyingWeek === week.weekStart}
+                    >
+                      {copyingWeek === week.weekStart ? "Adding..." : "Add these meals to this week"}
+                    </button>
+                    {copyResult[week.weekStart] && (
+                      <span className={styles.copyResult}>{copyResult[week.weekStart]}</span>
+                    )}
+                  </li>
                 </ul>
               )}
             </div>

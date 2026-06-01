@@ -21,6 +21,7 @@ router.get("/weeklySelections", authenticate, async (req: AuthRequest, res: Resp
       WHERE fs.household_id = $1
         AND week_start_utc(fs.chosen_at) = week_start_utc(NOW())
         AND fs.status != 'rejected'
+      ORDER BY m.name ASC
     `, [householdId]);
 
     const meals: MealSelection[] = result.rows.map((row) => ({
@@ -103,6 +104,73 @@ router.post("/addMealToWeek", authenticate, async (req: AuthRequest, res: Respon
     const message = err instanceof Error ? err.message : "Unknown error";
     console.error("Error adding meal to week:", err);
     res.status(500).json({ error: "Failed to add meal to week", details: message });
+  }
+});
+
+// POST /api/v1/copyWeekToCurrent
+// Body: { weekStart: string }
+// Copies all non-rejected meals from a past week into this week's selections.
+// Meals already present this week (non-rejected) are skipped; rejected ones are re-proposed.
+router.post("/copyWeekToCurrent", authenticate, async (req: AuthRequest, res: Response) => {
+  const householdId = req.user!.householdId;
+  const { weekStart } = req.body;
+
+  if (!weekStart || typeof weekStart !== "string") {
+    res.status(400).json({ error: "weekStart is required" });
+    return;
+  }
+
+  try {
+    // Find the distinct meals selected (non-rejected) during the source week.
+    // Display order is by meal name everywhere, so insertion order doesn't matter here.
+    const sourceMeals = await pool.query(
+      `SELECT DISTINCT fs.meal_id
+       FROM food_selections fs
+       WHERE fs.household_id = $1
+         AND fs.meal_id IS NOT NULL
+         AND fs.status != 'rejected'
+         AND DATE_TRUNC('week', fs.chosen_at) = $2`,
+      [householdId, weekStart]
+    );
+
+    if (sourceMeals.rows.length === 0) {
+      res.status(404).json({ error: "No meals found for that week" });
+      return;
+    }
+
+    let added = 0;
+    for (const { meal_id } of sourceMeals.rows) {
+      const existing = await pool.query(
+        `SELECT id, status FROM food_selections
+         WHERE meal_id = $1 AND household_id = $2
+           AND week_start_utc(chosen_at) = week_start_utc(NOW())`,
+        [meal_id, householdId]
+      );
+
+      if (existing.rows.length > 0) {
+        if (existing.rows[0].status === "rejected") {
+          await pool.query(
+            `UPDATE food_selections SET status = 'proposed', updated_at = NOW() WHERE id = $1`,
+            [existing.rows[0].id]
+          );
+          added++;
+        }
+        // Already present and not rejected — skip
+        continue;
+      }
+
+      await pool.query(
+        `INSERT INTO food_selections (meal_id, household_id, status) VALUES ($1, $2, 'proposed')`,
+        [meal_id, householdId]
+      );
+      added++;
+    }
+
+    res.json({ added });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    console.error("Error copying week to current:", err);
+    res.status(500).json({ error: "Failed to copy week to current", details: message });
   }
 });
 
@@ -443,7 +511,7 @@ router.get("/mealHistory", authenticate, async (req: AuthRequest, res: Response)
       JOIN meals m ON m.id = fs.meal_id
       WHERE fs.household_id = $1
         AND fs.status != 'rejected'
-      ORDER BY fs.chosen_at DESC
+      ORDER BY DATE_TRUNC('week', fs.chosen_at) DESC, m.name ASC
     `, [householdId]);
 
     // Group by week
