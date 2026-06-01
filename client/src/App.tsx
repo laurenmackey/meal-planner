@@ -74,6 +74,7 @@ function HomePage({ onLogout }: { onLogout: () => void }) {
   const [ingredients, setIngredients] = useState<AggregatedIngredient[] | null>(null);
   const [generatingIngredients, setGeneratingIngredients] = useState(false);
   const [multipliers, setMultipliers] = useState<Record<number, number>>({});
+  const [isNextWeek, setIsNextWeek] = useState(false);
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -87,6 +88,9 @@ function HomePage({ onLogout }: { onLogout: () => void }) {
       try {
         const res = await apiFetch("/api/v1/weeklySelections");
         const data = await res.json();
+        if (res.ok) {
+          setIsNextWeek(!!data.isNextWeek);
+        }
         if (res.ok && data.meals.length > 0) {
           setMeals(data.meals);
           const mults: Record<number, number> = {};
@@ -382,7 +386,7 @@ function HomePage({ onLogout }: { onLogout: () => void }) {
       {meals.length > 0 && (
         <div>
           <div className={styles.mealsHeader}>
-            <h2>This Week's Meals</h2>
+            <h2>{isNextWeek ? "Next Week's Meals" : "This Week's Meals"}</h2>
             <button
               className={styles.rejectButton}
               onClick={() => rejectMeals(meals.map((m) => m.foodSelectionId))}

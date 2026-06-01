@@ -62,7 +62,7 @@ export async function chooseWeeklyMeals(
     const existingResult = await pool.query(
       `SELECT COUNT(*) FROM food_selections
        WHERE household_id = $1 AND meal_id IS NOT NULL
-         AND week_start_utc(chosen_at) = week_start_utc(NOW())
+         AND chosen_for_week = active_week_start()
          AND status != 'rejected'`,
       [householdId]
     );
@@ -78,7 +78,7 @@ export async function chooseWeeklyMeals(
     FROM food_selections fs
     WHERE fs.meal_id IS NOT NULL
       AND fs.household_id = $1
-      AND week_start_utc(fs.chosen_at) = week_start_utc(NOW())
+      AND fs.chosen_for_week = active_week_start()
   `;
 
   // Fetch basic meals separately — no lookback, but exclude anything chosen or rejected this week
@@ -111,7 +111,7 @@ export async function chooseWeeklyMeals(
            FROM food_selections fs
            WHERE fs.meal_id IS NOT NULL
              AND fs.household_id = $1
-             AND fs.chosen_at > NOW() - INTERVAL '${settings.lookbackWeeks} weeks'
+             AND fs.chosen_for_week > active_week_start() - INTERVAL '${settings.lookbackWeeks} weeks'
          )`,
         [householdId]
       );
@@ -128,7 +128,7 @@ export async function chooseWeeklyMeals(
      FROM food_selections fs
      JOIN meals m ON m.id = fs.meal_id
      WHERE fs.household_id = $1
-       AND week_start_utc(fs.chosen_at) = week_start_utc(NOW())
+       AND fs.chosen_for_week = active_week_start()
        AND fs.status != 'rejected'
        AND m.main_protein IS NOT NULL`,
     [householdId]
@@ -146,7 +146,7 @@ export async function chooseWeeklyMeals(
      JOIN meals m ON m.id = fs.meal_id
      WHERE fs.household_id = $1 AND fs.meal_id IS NOT NULL
        AND m.is_basic = TRUE
-       AND week_start_utc(fs.chosen_at) = week_start_utc(NOW())
+       AND fs.chosen_for_week = active_week_start()
        AND fs.status != 'rejected'`,
     [householdId]
   );
@@ -174,7 +174,8 @@ export async function chooseWeeklyMeals(
   const insertedSelections: MealSelection[] = [];
   for (const meal of chosen) {
     const result = await pool.query(
-      `INSERT INTO food_selections (meal_id, household_id, status) VALUES ($1, $2, 'proposed') RETURNING *`,
+      `INSERT INTO food_selections (meal_id, household_id, status, chosen_for_week)
+       VALUES ($1, $2, 'proposed', active_week_start()) RETURNING *`,
       [meal.id, householdId]
     );
     insertedSelections.push({

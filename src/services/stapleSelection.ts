@@ -10,8 +10,8 @@ export async function chooseWeeklyStaples(householdId: number, restore = false):
   // Insert all staples, allowing the unique index to reject any duplicates for the week
   for (const staple of staples.rows) {
     await pool.query(
-      `INSERT INTO food_selections (food_staple_id, household_id, status)
-       VALUES ($1, $2, 'proposed')
+      `INSERT INTO food_selections (food_staple_id, household_id, status, chosen_for_week)
+       VALUES ($1, $2, 'proposed', active_week_start())
        ON CONFLICT DO NOTHING`,
       [staple.id, householdId]
     );
@@ -24,7 +24,7 @@ export async function chooseWeeklyStaples(householdId: number, restore = false):
        SET status = 'proposed', updated_at = NOW()
        WHERE household_id = $1
          AND food_staple_id IS NOT NULL
-         AND week_start_utc(chosen_at) = week_start_utc(NOW())
+         AND chosen_for_week = active_week_start()
          AND status = 'rejected'`,
       [householdId]
     );
@@ -37,7 +37,7 @@ export async function chooseWeeklyStaples(householdId: number, restore = false):
     FROM food_selections fs
     JOIN food_staples s ON s.id = fs.food_staple_id
     WHERE fs.household_id = $1
-      AND week_start_utc(fs.chosen_at) = week_start_utc(NOW())
+      AND fs.chosen_for_week = active_week_start()
       AND fs.status != 'rejected'
     ORDER BY s.name ASC
   `, [householdId]);

@@ -25,7 +25,8 @@ export function toMeal(row: any): Meal {
 export function toFoodSelection(row: any): FoodSelection {
   return {
     id: row.id,
-    chosenAt: row.chosen_at,
+    createdAt: row.created_at,
+    chosenForWeek: row.chosen_for_week,
     updatedAt: row.updated_at,
     status: row.status,
     mealId: row.meal_id,

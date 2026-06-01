@@ -34,7 +34,8 @@ export interface MealSelection extends Meal {
 
 export interface FoodSelection {
   id: number;
-  chosenAt: Date;
+  createdAt: Date;
+  chosenForWeek: string;
   updatedAt: Date;
   status: SelectionStatus;
   mealId: number | null;
@@ -76,6 +77,9 @@ export interface MeResponse {
 
 export interface ChooseWeeklyMealsResponse {
   meals: MealSelection[];
+  // True when the active week hasn't started yet in Pacific time (i.e. these are
+  // next week's meals, shown over the weekend before the week begins).
+  isNextWeek?: boolean;
 }
 
 export interface RejectFoodSelectionsResponse {

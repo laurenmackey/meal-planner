@@ -89,7 +89,7 @@ async function runWeeklyMealJob() {
          FROM food_selections fs
          JOIN meals m ON m.id = fs.meal_id
          WHERE fs.household_id = $1
-           AND week_start_utc(fs.chosen_at) = week_start_utc(NOW())
+           AND fs.chosen_for_week = active_week_start()
            AND fs.status != 'rejected'`,
         [householdId]
       );

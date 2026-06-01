@@ -143,15 +143,15 @@ describe("Food selections routes", () => {
   });
 
   describe("POST /api/v1/copyWeekToCurrent", () => {
-    // Inserts a non-rejected meal selection in a past week and returns its week_start (ISO)
+    // Inserts a non-rejected meal selection in a past week and returns its chosen_for_week
     async function seedPastWeek(householdId: number, mealId: number): Promise<string> {
       const result = await pool.query(
-        `INSERT INTO food_selections (meal_id, household_id, status, chosen_at)
-         VALUES ($1, $2, 'proposed', NOW() - INTERVAL '14 days')
-         RETURNING DATE_TRUNC('week', chosen_at) AS week_start`,
+        `INSERT INTO food_selections (meal_id, household_id, status, chosen_for_week)
+         VALUES ($1, $2, 'proposed', week_start_utc(NOW() - INTERVAL '14 days'))
+         RETURNING to_char(chosen_for_week, 'YYYY-MM-DD') AS week_start`,
         [mealId, householdId]
       );
-      return result.rows[0].week_start.toISOString();
+      return result.rows[0].week_start;
     }
 
     it("copies a past week's meals into this week", async () => {

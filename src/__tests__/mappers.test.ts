@@ -77,7 +77,8 @@ describe("toFoodSelection", () => {
   it("maps snake_case DB row to camelCase FoodSelection", () => {
     const row = {
       id: 10,
-      chosen_at: new Date("2024-06-01"),
+      created_at: new Date("2024-06-01"),
+      chosen_for_week: "2024-06-01",
       updated_at: new Date("2024-06-02"),
       status: "proposed",
       meal_id: 5,
@@ -86,7 +87,8 @@ describe("toFoodSelection", () => {
 
     const fs = toFoodSelection(row);
     expect(fs.id).toBe(10);
-    expect(fs.chosenAt).toEqual(new Date("2024-06-01"));
+    expect(fs.createdAt).toEqual(new Date("2024-06-01"));
+    expect(fs.chosenForWeek).toBe("2024-06-01");
     expect(fs.updatedAt).toEqual(new Date("2024-06-02"));
     expect(fs.status).toBe("proposed");
     expect(fs.mealId).toBe(5);

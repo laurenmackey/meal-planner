@@ -19,7 +19,7 @@ router.get("/weeklySelections", authenticate, async (req: AuthRequest, res: Resp
       FROM food_selections fs
       JOIN meals m ON m.id = fs.meal_id
       WHERE fs.household_id = $1
-        AND week_start_utc(fs.chosen_at) = week_start_utc(NOW())
+        AND fs.chosen_for_week = active_week_start()
         AND fs.status != 'rejected'
       ORDER BY m.name ASC
     `, [householdId]);
@@ -32,7 +32,16 @@ router.get("/weeklySelections", authenticate, async (req: AuthRequest, res: Resp
       score: 0,
     }));
 
-    const response: ChooseWeeklyMealsResponse = { meals };
+    // The active week hasn't started until Monday 00:00 Pacific. Until then these
+    // are "next week's" meals (shown over the weekend after the Friday cron).
+    const weekStarted = await pool.query(
+      `SELECT (active_week_start()::timestamp AT TIME ZONE 'America/Los_Angeles') > NOW() AS is_next_week`
+    );
+
+    const response: ChooseWeeklyMealsResponse = {
+      meals,
+      isNextWeek: weekStarted.rows[0].is_next_week,
+    };
     res.json(response);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
@@ -68,7 +77,7 @@ router.post("/addMealToWeek", authenticate, async (req: AuthRequest, res: Respon
     const existing = await pool.query(
       `SELECT id, status FROM food_selections
        WHERE meal_id = $1 AND household_id = $2
-         AND week_start_utc(chosen_at) = week_start_utc(NOW())`,
+         AND chosen_for_week = active_week_start()`,
       [mealId, householdId]
     );
 
@@ -85,7 +94,8 @@ router.post("/addMealToWeek", authenticate, async (req: AuthRequest, res: Respon
       foodSelectionId = existing.rows[0].id;
     } else {
       const insertResult = await pool.query(
-        `INSERT INTO food_selections (meal_id, household_id, status) VALUES ($1, $2, 'proposed') RETURNING id`,
+        `INSERT INTO food_selections (meal_id, household_id, status, chosen_for_week)
+         VALUES ($1, $2, 'proposed', active_week_start()) RETURNING id`,
         [mealId, householdId]
       );
       foodSelectionId = insertResult.rows[0].id;
@@ -129,7 +139,7 @@ router.post("/copyWeekToCurrent", authenticate, async (req: AuthRequest, res: Re
        WHERE fs.household_id = $1
          AND fs.meal_id IS NOT NULL
          AND fs.status != 'rejected'
-         AND DATE_TRUNC('week', fs.chosen_at) = $2`,
+         AND fs.chosen_for_week = $2`,
       [householdId, weekStart]
     );
 
@@ -143,7 +153,7 @@ router.post("/copyWeekToCurrent", authenticate, async (req: AuthRequest, res: Re
       const existing = await pool.query(
         `SELECT id, status FROM food_selections
          WHERE meal_id = $1 AND household_id = $2
-           AND week_start_utc(chosen_at) = week_start_utc(NOW())`,
+           AND chosen_for_week = active_week_start()`,
         [meal_id, householdId]
       );
 
@@ -160,7 +170,8 @@ router.post("/copyWeekToCurrent", authenticate, async (req: AuthRequest, res: Re
       }
 
       await pool.query(
-        `INSERT INTO food_selections (meal_id, household_id, status) VALUES ($1, $2, 'proposed')`,
+        `INSERT INTO food_selections (meal_id, household_id, status, chosen_for_week)
+         VALUES ($1, $2, 'proposed', active_week_start())`,
         [meal_id, householdId]
       );
       added++;
@@ -317,7 +328,7 @@ router.post("/addWeeklyStaple", authenticate, async (req: AuthRequest, res: Resp
     const existing = await pool.query(
       `SELECT id, status FROM food_selections
        WHERE food_staple_id = $1 AND household_id = $2
-         AND week_start_utc(chosen_at) = week_start_utc(NOW())`,
+         AND chosen_for_week = active_week_start()`,
       [foodStapleId, householdId]
     );
 
@@ -331,8 +342,8 @@ router.post("/addWeeklyStaple", authenticate, async (req: AuthRequest, res: Resp
       foodSelectionId = existing.rows[0].id;
     } else {
       const insertResult = await pool.query(
-        `INSERT INTO food_selections (food_staple_id, household_id, status)
-         VALUES ($1, $2, 'proposed')
+        `INSERT INTO food_selections (food_staple_id, household_id, status, chosen_for_week)
+         VALUES ($1, $2, 'proposed', active_week_start())
          ON CONFLICT DO NOTHING
          RETURNING id`,
         [foodStapleId, householdId]
@@ -385,7 +396,7 @@ router.get("/weeklyStaples", authenticate, async (req: AuthRequest, res: Respons
       FROM food_selections fs
       JOIN food_staples s ON s.id = fs.food_staple_id
       WHERE fs.household_id = $1
-        AND week_start_utc(fs.chosen_at) = week_start_utc(NOW())
+        AND fs.chosen_for_week = active_week_start()
         AND fs.status != 'rejected'
       ORDER BY s.name ASC
     `, [householdId]);
@@ -505,19 +516,19 @@ router.get("/mealHistory", authenticate, async (req: AuthRequest, res: Response)
   try {
     const result = await pool.query(`
       SELECT m.*, fs.id AS food_selection_id, fs.status AS selection_status,
-             fs.chosen_at, fs.serving_size_multiplier,
-             DATE_TRUNC('week', fs.chosen_at) AS week_start
+             fs.serving_size_multiplier,
+             to_char(fs.chosen_for_week, 'YYYY-MM-DD"T"00:00:00') AS week_start
       FROM food_selections fs
       JOIN meals m ON m.id = fs.meal_id
       WHERE fs.household_id = $1
         AND fs.status != 'rejected'
-      ORDER BY DATE_TRUNC('week', fs.chosen_at) DESC, m.name ASC
+      ORDER BY fs.chosen_for_week DESC, m.name ASC
     `, [householdId]);
 
     // Group by week
     const weeks: Record<string, { weekStart: string; meals: MealSelection[] }> = {};
     for (const row of result.rows) {
-      const weekKey = row.week_start.toISOString();
+      const weekKey = row.week_start;
       if (!weeks[weekKey]) {
         weeks[weekKey] = { weekStart: weekKey, meals: [] };
       }
