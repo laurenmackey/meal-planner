@@ -64,28 +64,6 @@
   margin: 0 0 16px;
 }
 
-.ingredientDetail {
-  flex: 1;
-  min-width: 0;
-  padding-top: 6px;
-}
-
-.ingredientName {
-  font-weight: 500;
-}
-
-.ingredientNotes {
-  color: #888;
-  font-size: 13px;
-  font-style: italic;
-}
-
-.optionalTag {
-  color: #999;
-  font-weight: normal;
-  font-style: italic;
-}
-
 .extraItems {
   margin-top: 8px;
 }

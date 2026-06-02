@@ -425,14 +425,14 @@ function HomePage({ onLogout }: { onLogout: () => void }) {
           ) : (
             <div className="ingredient-edit-list">
               {ingredients.map((ing, i) => (
-                <div key={i} className="ingredient-edit-row">
+                <div key={`${ing.name}::${ing.measurementUnit}`} className="ingredient-edit-row">
                   <input
                     className="edit-input-sm"
                     type="number"
                     step="any"
                     min="0"
-                    defaultValue={ing.quantity}
-                    onBlur={(e) => updateIngredient(i, { quantity: Number(e.target.value) || 0 })}
+                    value={ing.quantity}
+                    onChange={(e) => updateIngredient(i, { quantity: Number(e.target.value) || 0 })}
                   />
                   <select
                     className="edit-select"
@@ -443,17 +443,14 @@ function HomePage({ onLogout }: { onLogout: () => void }) {
                       <option key={u} value={u}>{u}</option>
                     ))}
                   </select>
-                  <div className={styles.ingredientDetail}>
-                    <input
-                      className="edit-input"
-                      value={ing.name}
-                      onChange={(e) => updateIngredient(i, { name: e.target.value })}
-                    />
-                    {ing.optional && <span className={styles.optionalTag}>(optional)</span>}
-                    {ing.notes.length > 0 && (
-                      <span className={styles.ingredientNotes}> — {ing.notes.join("; ")}</span>
-                    )}
-                  </div>
+                  <input
+                    className="edit-input"
+                    value={ing.notes.length > 0 ? `${ing.name} — ${ing.notes.join("; ")}` : ing.name}
+                    onChange={(e) => {
+                      const parts = e.target.value.split(" — ");
+                      updateIngredient(i, { name: parts[0], notes: parts.length > 1 ? [parts.slice(1).join(" — ")] : [] });
+                    }}
+                  />
                   <button className="remove-ingredient" onClick={() => removeIngredient(i)}>x</button>
                 </div>
               ))}
