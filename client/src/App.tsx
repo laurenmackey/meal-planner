@@ -431,8 +431,8 @@ function HomePage({ onLogout }: { onLogout: () => void }) {
                     type="number"
                     step="any"
                     min="0"
-                    value={ing.quantity}
-                    onChange={(e) => updateIngredient(i, { quantity: Number(e.target.value) || 0 })}
+                    defaultValue={ing.quantity}
+                    onBlur={(e) => updateIngredient(i, { quantity: Number(e.target.value) || 0 })}
                   />
                   <select
                     className="edit-select"
@@ -445,7 +445,7 @@ function HomePage({ onLogout }: { onLogout: () => void }) {
                   </select>
                   <input
                     className="edit-input"
-                    value={ing.notes.length > 0 ? `${ing.name} — ${ing.notes.join("; ")}` : ing.name}
+                    value={[ing.name, ing.notes.length > 0 ? ing.notes.join("; ") : "", ing.optional ? "(optional)" : ""].filter(Boolean).join(" — ")}
                     onChange={(e) => {
                       const parts = e.target.value.split(" — ");
                       updateIngredient(i, { name: parts[0], notes: parts.length > 1 ? [parts.slice(1).join(" — ")] : [] });
