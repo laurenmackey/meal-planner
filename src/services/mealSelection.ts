@@ -72,6 +72,15 @@ export async function chooseWeeklyMeals(
 
   if (needed === 0) return [];
 
+  // Exclude meals selected in the last N weeks
+  const lookbackExcludeQuery = `
+    SELECT fs.meal_id
+    FROM food_selections fs
+    WHERE fs.meal_id IS NOT NULL
+      AND fs.household_id = $1
+      AND fs.chosen_for_week > active_week_start() - INTERVAL '${settings.lookbackWeeks} weeks'
+  `;
+
   // Exclude anything chosen or rejected this week
   const excludeCurrentQuery = `
     SELECT fs.meal_id
@@ -81,17 +90,37 @@ export async function chooseWeeklyMeals(
       AND fs.chosen_for_week = active_week_start()
   `;
 
-  // Fetch basic meals separately — no lookback, but exclude anything chosen or rejected this week
-  const basicMealsResult = await pool.query(
-    `SELECT m.* FROM meals m
-     WHERE m.household_id = $1
-       AND m.is_basic = TRUE
-       AND m.is_archived = FALSE
-       AND m.id NOT IN (${excludeCurrentQuery})`,
-    [householdId]
-  );
+  // Fetch basic meals with lookback; fall back to no lookback if none are eligible
+  let basicMealsResult = includeAll
+    ? await pool.query(
+        `SELECT m.* FROM meals m
+         WHERE m.household_id = $1
+           AND m.is_basic = TRUE
+           AND m.is_archived = FALSE
+           AND m.id NOT IN (${excludeCurrentQuery})`,
+        [householdId]
+      )
+    : await pool.query(
+        `SELECT m.* FROM meals m
+         WHERE m.household_id = $1
+           AND m.is_basic = TRUE
+           AND m.is_archived = FALSE
+           AND m.id NOT IN (${lookbackExcludeQuery})`,
+        [householdId]
+      );
+  // If lookback left no basic meals, fall back to only excluding this week
+  if (!includeAll && basicMealsResult.rows.length === 0) {
+    basicMealsResult = await pool.query(
+      `SELECT m.* FROM meals m
+       WHERE m.household_id = $1
+         AND m.is_basic = TRUE
+         AND m.is_archived = FALSE
+         AND m.id NOT IN (${excludeCurrentQuery})`,
+      [householdId]
+    );
+  }
 
-  // Fetch non-basic meals with lookback restriction and exclude anything chosen or rejected this week
+  // Fetch non-basic meals with lookback restriction
   const regularMealsResult = includeAll
     ? await pool.query(
         `SELECT m.* FROM meals m
@@ -106,13 +135,8 @@ export async function chooseWeeklyMeals(
          FROM meals m
          WHERE m.household_id = $1
            AND m.is_basic = FALSE
-           AND m.id NOT IN (
-           SELECT fs.meal_id
-           FROM food_selections fs
-           WHERE fs.meal_id IS NOT NULL
-             AND fs.household_id = $1
-             AND fs.chosen_for_week > active_week_start() - INTERVAL '${settings.lookbackWeeks} weeks'
-         )`,
+           AND m.is_archived = FALSE
+           AND m.id NOT IN (${lookbackExcludeQuery})`,
         [householdId]
       );
 

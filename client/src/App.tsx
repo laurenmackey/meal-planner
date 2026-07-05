@@ -71,8 +71,9 @@ function HomePage({ onLogout }: { onLogout: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [showIncludeAll, setShowIncludeAll] = useState(false);
-  const [ingredients, setIngredients] = useState<AggregatedIngredient[] | null>(null);
+  const [ingredients, setIngredients] = useState<(AggregatedIngredient & { _key: number })[] | null>(null);
   const [generatingIngredients, setGeneratingIngredients] = useState(false);
+  const ingredientKeyRef = useRef(0);
   const [multipliers, setMultipliers] = useState<Record<number, number>>({});
   const [isNextWeek, setIsNextWeek] = useState(false);
 
@@ -227,7 +228,7 @@ function HomePage({ onLogout }: { onLogout: () => void }) {
         setError(data.error || "Failed to generate ingredients");
         return;
       }
-      setIngredients(data.ingredients);
+      setIngredients(data.ingredients.map((ing: AggregatedIngredient) => ({ ...ing, _key: ++ingredientKeyRef.current })));
     } catch {
       setError("Failed to connect to server");
     } finally {
@@ -260,7 +261,20 @@ function HomePage({ onLogout }: { onLogout: () => void }) {
       lines.push(s.name);
     }
 
-    await navigator.clipboard.writeText(lines.join("\n"));
+    const plainText = lines.join("\n");
+    // Write both plain text and HTML so Google Keep on mobile splits into separate checkboxes
+    const html = "<ul>" + lines.map((l) => `<li>${l}</li>`).join("") + "</ul>";
+    try {
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          "text/plain": new Blob([plainText], { type: "text/plain" }),
+          "text/html": new Blob([html], { type: "text/html" }),
+        }),
+      ]);
+    } catch {
+      // Fallback for browsers that don't support ClipboardItem
+      await navigator.clipboard.writeText(plainText);
+    }
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -425,7 +439,7 @@ function HomePage({ onLogout }: { onLogout: () => void }) {
           ) : (
             <div className="ingredient-edit-list">
               {ingredients.map((ing, i) => (
-                <div key={`${ing.name}::${ing.measurementUnit}`} className="ingredient-edit-row">
+                <div key={ing._key} className="ingredient-edit-row">
                   <input
                     className="edit-input-sm"
                     type="number"
@@ -447,8 +461,15 @@ function HomePage({ onLogout }: { onLogout: () => void }) {
                     className="edit-input"
                     value={[ing.name, ing.notes.length > 0 ? ing.notes.join("; ") : "", ing.optional ? "(optional)" : ""].filter(Boolean).join(" — ")}
                     onChange={(e) => {
-                      const parts = e.target.value.split(" — ");
-                      updateIngredient(i, { name: parts[0], notes: parts.length > 1 ? [parts.slice(1).join(" — ")] : [] });
+                      const raw = e.target.value;
+                      const hasOptional = raw.includes("(optional)");
+                      const cleaned = raw.replace(/\s*—?\s*\(optional\)/g, "");
+                      const parts = cleaned.split(" — ");
+                      updateIngredient(i, {
+                        name: parts[0],
+                        notes: parts.length > 1 ? [parts.slice(1).join(" — ")] : [],
+                        optional: hasOptional,
+                      });
                     }}
                   />
                   <button className="remove-ingredient" onClick={() => removeIngredient(i)}>x</button>
